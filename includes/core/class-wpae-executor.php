@@ -43,9 +43,22 @@ array(
 );
 }
 
+public function run_plan( $plan ) {
+return $this->execute_plan( $plan );
+}
+
 protected function execute_plan( $plan ) {
 $action_name = isset( $plan['action'] ) ? sanitize_key( $plan['action'] ) : '';
 $action      = $this->registry->get( $action_name );
+
+$this->logger->log(
+'Запуск плана',
+array(
+'plan_id' => isset( $plan['id'] ) ? $plan['id'] : '',
+'action'  => $action_name,
+'trigger' => isset( $plan['trigger'] ) ? $plan['trigger'] : '',
+)
+);
 
 if ( ! $action ) {
 $this->logger->log(
