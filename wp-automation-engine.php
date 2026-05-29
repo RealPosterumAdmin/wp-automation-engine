@@ -1,31 +1,31 @@
 <?php
 /**
- * Plugin Name: WP Automation Engine
- * Description: Система автоматизации внутри WordPress.
- * Version: 1.0.0
- * Author: RealPosterumAdmin
- * Text Domain: wp-automation-engine
+ * Plugin Name:       WP Automation Engine
+ * Plugin URI:        https://posterumsoft.com/
+ * Description:       A WordPress automation plugin inspired by n8n.
+ * Version:           1.0.0
+ * Author:            PosterumSoft
+ * Author URI:        https://posterumsoft.com/
+ * License:           GPL-2.0+
+ * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
+ * Text Domain:       wp-automation-engine
+ * Domain Path:       /languages
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
-exit;
+	exit;
 }
 
-define( 'WPAE_VERSION', '1.0.0' );
-define( 'WPAE_PLUGIN_FILE', __FILE__ );
-define( 'WPAE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-define( 'WPAE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+define( 'WP_AUTOMATION_ENGINE_VERSION', '1.0.0' );
 
-require_once WPAE_PLUGIN_DIR . 'includes/core/class-wpae-autoloader.php';
+require plugin_dir_path( __FILE__ ) . 'includes/class-wp-automation-engine.php';
 
-WPAE_Autoloader::register( WPAE_PLUGIN_DIR );
+register_activation_hook( __FILE__, array( 'WP_Automation_Engine', 'activate' ) );
+register_deactivation_hook( __FILE__, array( 'WP_Automation_Engine', 'deactivate' ) );
 
-register_activation_hook( WPAE_PLUGIN_FILE, array( 'WPAE_Bootstrap', 'activate' ) );
-register_deactivation_hook( WPAE_PLUGIN_FILE, array( 'WPAE_Bootstrap', 'deactivate' ) );
-
-function wpae_run_plugin() {
-$bootstrap = new WPAE_Bootstrap();
-$bootstrap->run();
+function run_wp_automation_engine() {
+	$plugin = new WP_Automation_Engine();
+	$plugin->run();
 }
 
-wpae_run_plugin();
+run_wp_automation_engine();
