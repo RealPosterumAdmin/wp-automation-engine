@@ -46,8 +46,8 @@ return $context;
 protected function build_post_data( $payload ) {
 $data = array(
 'post_id'   => isset( $payload['post_id'] ) ? (int) $payload['post_id'] : 0,
-'post_type' => '',
-'post_name' => '',
+'post_type' => isset( $payload['post_type'] ) ? sanitize_key( $payload['post_type'] ) : '',
+'post_name' => isset( $payload['post_name'] ) ? sanitize_text_field( $payload['post_name'] ) : '',
 'update'    => ! empty( $payload['update'] ),
 );
 
