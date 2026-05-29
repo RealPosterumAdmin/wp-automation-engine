@@ -31,7 +31,7 @@ $trigger->register();
 }
 
 public static function activate() {
-self::register_cron_schedules( array() );
+add_filter( 'cron_schedules', array( __CLASS__, 'register_cron_schedules' ) );
 add_option( WPAE_Storage::OPTION_KEY, array(), '', 'no' );
 self::schedule_event( WPAE_Cron_Trigger::HOOK, 'wpae_every_minute' );
 self::schedule_event( WPAE_Executor::HOOK, 'wpae_every_minute' );
