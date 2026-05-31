@@ -46,6 +46,14 @@ class WP_Automation_Admin {
 			$this->version,
 			true
 		);
+
+		wp_localize_script(
+			'wp-automation-engine-admin',
+			'wpaeAdminConfig',
+			array(
+				'schemas' => $this->node_factory->get_schemas(),
+			)
+		);
 	}
 
 	public function handle_form_submission() {
@@ -412,8 +420,19 @@ class WP_Automation_Admin {
 							<tr>
 								<th scope="row"><label for="wp-automation-engine-nodes-json"><?php echo esc_html__( 'Nodes', 'wp-automation-engine' ); ?></label></th>
 								<td>
-									<textarea id="wp-automation-engine-nodes-json" name="wp_automation_engine_workflow_nodes_json" class="large-text code" rows="16"><?php echo esc_textarea( $state['nodes_json'] ); ?></textarea>
-									<p class="description"><?php echo esc_html__( 'Nodes are stored as a JSON array. Use the schema guide on the right to build node payloads.', 'wp-automation-engine' ); ?></p>
+									<div id="wpae-node-editor" class="wpae-node-editor" data-target-input="wp-automation-engine-nodes-json"></div>
+									<p class="description"><?php echo esc_html__( 'Build nodes with the schema-driven editor below. The raw JSON fallback stays available for manual fixes and recovery.', 'wp-automation-engine' ); ?></p>
+									<details class="wpae-node-editor-advanced">
+										<summary><?php echo esc_html__( 'Raw Nodes JSON', 'wp-automation-engine' ); ?></summary>
+										<textarea id="wp-automation-engine-nodes-json" name="wp_automation_engine_workflow_nodes_json" class="large-text code wpae-node-editor-json" rows="16"><?php echo esc_textarea( $state['nodes_json'] ); ?></textarea>
+										<p class="description"><?php echo esc_html__( 'If you edit the JSON manually, click the reload button so the visual editor picks up the changes.', 'wp-automation-engine' ); ?></p>
+										<p>
+											<button type="button" class="button" id="wpae-node-editor-reload"><?php echo esc_html__( 'Reload visual editor from JSON', 'wp-automation-engine' ); ?></button>
+										</p>
+									</details>
+									<noscript>
+										<p class="description"><?php echo esc_html__( 'JavaScript is disabled. Edit the workflow nodes in the JSON field above.', 'wp-automation-engine' ); ?></p>
+									</noscript>
 								</td>
 							</tr>
 						</tbody>
