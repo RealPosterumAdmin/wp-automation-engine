@@ -9,6 +9,7 @@ class WP_Automation_Engine {
 	protected $version;
 	protected $storage;
 	protected $node_factory;
+	protected $kernel;
 
 	public function __construct() {
 		$this->version     = defined( 'WP_AUTOMATION_ENGINE_VERSION' ) ? WP_AUTOMATION_ENGINE_VERSION : '1.0.0';
@@ -24,6 +25,10 @@ class WP_Automation_Engine {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-loader.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-i18n.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-storage.php';
+		$this->require_files_from_directory( plugin_dir_path( dirname( __FILE__ ) ) . 'includes/domain/*.php' );
+		$this->require_files_from_directory( plugin_dir_path( dirname( __FILE__ ) ) . 'includes/application/contracts/*.php' );
+		$this->require_files_from_directory( plugin_dir_path( dirname( __FILE__ ) ) . 'includes/infrastructure/*.php' );
+		$this->require_files_from_directory( plugin_dir_path( dirname( __FILE__ ) ) . 'includes/application/*.php' );
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-context.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-condition-evaluator.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/interface-wp-automation-node.php';
@@ -41,6 +46,20 @@ class WP_Automation_Engine {
 		$this->loader = new WP_Automation_Loader();
 	}
 
+	private function require_files_from_directory( $pattern ) {
+		$files = glob( $pattern );
+
+		if ( empty( $files ) ) {
+			return;
+		}
+
+		sort( $files );
+
+		foreach ( $files as $file ) {
+			require_once $file;
+		}
+	}
+
 	private function set_locale() {
 		$plugin_i18n = new WP_Automation_i18n();
 		$this->loader->add_action( 'plugins_loaded', $plugin_i18n, 'load_plugin_textdomain', 10, 0 );
@@ -49,17 +68,37 @@ class WP_Automation_Engine {
 	private function boot_runtime() {
 		$this->storage      = new WP_Automation_Storage();
 		$this->storage->bootstrap_defaults();
-		$condition_engine   = new WP_Automation_Condition_Evaluator();
-		$this->node_factory = new WP_Automation_Node_Factory( $condition_engine );
-		$executor           = new WP_Automation_Executor( $this->storage, $this->node_factory );
-		$kernel             = new WP_Automation_Kernel( $this->storage, $executor );
-		$trigger_agent      = new WP_Automation_Trigger_Agent( $this->storage, $kernel );
+		$condition_engine    = new WP_Automation_Condition_Evaluator();
+		$this->node_factory  = new WP_Automation_Node_Factory( $condition_engine );
+		$workflow_repository = new WPAE_Storage_Workflow_Repository( $this->storage );
+		$run_repository      = new WPAE_Storage_Run_Repository( $this->storage );
+		$queue               = new WPAE_Sync_Queue();
+		$lock_manager        = new WPAE_Option_Lock_Manager();
+		$event_bus           = new WPAE_WordPress_Event_Bus();
+		$expression_engine   = new WPAE_Basic_Expression_Evaluator();
+		$trigger_registry    = new WPAE_Trigger_Registry();
+		$executor            = new WP_Automation_Executor( $this->storage, $this->node_factory, $run_repository, $expression_engine, $lock_manager, $event_bus );
+		$execute_run         = new WPAE_Execute_Run( $executor );
+		$start_workflow      = new WPAE_Start_Workflow( $workflow_repository, $queue );
+		$dispatch_trigger    = new WPAE_Dispatch_Trigger( $start_workflow );
+		$this->kernel        = new WP_Automation_Kernel( $dispatch_trigger );
+		$trigger_agent       = new WP_Automation_Trigger_Agent( $this->storage, $this->kernel, $trigger_registry );
+
+		$queue->register_handler(
+			'execute_workflow',
+			static function ( array $payload ) use ( $execute_run ) {
+				return $execute_run->execute(
+					WPAE_Workflow::from_array( $payload['workflow'] ?? array() ),
+					isset( $payload['trigger'] ) && is_array( $payload['trigger'] ) ? $payload['trigger'] : array()
+				);
+			}
+		);
 
 		$trigger_agent->bootstrap();
 	}
 
 	private function define_admin_hooks() {
-		$plugin_admin = new WP_Automation_Admin( $this->plugin_name, $this->version, $this->storage, $this->node_factory );
+		$plugin_admin = new WP_Automation_Admin( $this->plugin_name, $this->version, $this->storage, $this->node_factory, $this->kernel );
 
 		$this->loader->add_action( 'admin_menu', $plugin_admin, 'add_plugin_admin_menu', 10, 0 );
 		$this->loader->add_action( 'admin_init', $plugin_admin, 'handle_form_submission', 10, 0 );

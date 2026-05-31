@@ -4,67 +4,70 @@ class WP_Automation_Storage {
 
 	const WORKFLOWS_OPTION = 'wp_automation_engine_workflows';
 	const LOG_OPTION       = 'wp_automation_engine_execution_log';
+	const RUNS_OPTION      = 'wp_automation_engine_runs';
 	const MAX_LOG_ITEMS    = 50;
 
 	public function bootstrap_defaults() {
-		if ( false !== get_option( self::WORKFLOWS_OPTION, false ) ) {
-			return;
-		}
-
-		update_option(
-			self::WORKFLOWS_OPTION,
-			array(
+		if ( false === get_option( self::WORKFLOWS_OPTION, false ) ) {
+			update_option(
+				self::WORKFLOWS_OPTION,
 				array(
-					'id'        => WP_Automation_Engine::DEFAULT_WORKFLOW_ID,
-					'name'      => 'Пример сценария',
-					'enabled'   => false,
-					'trigger'   => array(
-						'type' => 'action',
-						'hook' => 'init',
-					),
-					'variables' => array(
-						'message' => 'Привет из WP Automation Engine',
-					),
-					'nodes'     => array(
-						array(
-							'id'     => 'node_set_message',
-							'type'   => 'set_variable',
-							'config' => array(
-								'scope' => 'global',
-								'key'   => 'message',
-								'value' => 'Сценарий выполнен на хуке {{trigger.hook}}',
-							),
+					array(
+						'id'        => WP_Automation_Engine::DEFAULT_WORKFLOW_ID,
+						'name'      => 'Пример сценария',
+						'enabled'   => false,
+						'trigger'   => array(
+							'type' => 'action',
+							'hook' => 'init',
 						),
-						array(
-							'id'     => 'node_dispatch_event',
-							'type'   => 'dispatch_event',
-							'config' => array(
-								'event'   => 'workflow.finished',
-								'payload' => array(
-									'workflow_id' => '{{workflow.id}}',
-									'message'     => '{{variables.message}}',
+						'variables' => array(
+							'message' => 'Привет из WP Automation Engine',
+						),
+						'nodes'     => array(
+							array(
+								'id'     => 'node_set_message',
+								'type'   => 'set_variable',
+								'config' => array(
+									'scope' => 'global',
+									'key'   => 'message',
+									'value' => 'Сценарий выполнен на хуке {{trigger.hook}}',
 								),
 							),
-						),
-						array(
-							'id'     => 'node_fire_action',
-							'type'   => 'action',
-							'config' => array(
-								'hook'    => 'wp_automation_engine_workflow_finished',
-								'payload' => array(
-									'workflow_id' => '{{workflow.id}}',
-									'message'     => '{{variables.message}}',
+							array(
+								'id'     => 'node_dispatch_event',
+								'type'   => 'dispatch_event',
+								'config' => array(
+									'event'   => 'workflow.finished',
+									'payload' => array(
+										'workflow_id' => '{{workflow.id}}',
+										'message'     => '{{variables.message}}',
+									),
+								),
+							),
+							array(
+								'id'     => 'node_fire_action',
+								'type'   => 'action',
+								'config' => array(
+									'hook'    => 'wp_automation_engine_workflow_finished',
+									'payload' => array(
+										'workflow_id' => '{{workflow.id}}',
+										'message'     => '{{variables.message}}',
+									),
 								),
 							),
 						),
 					),
 				),
-			),
-			false
-		);
+				false
+			);
+		}
 
 		if ( false === get_option( self::LOG_OPTION, false ) ) {
 			add_option( self::LOG_OPTION, array(), '', false );
+		}
+
+		if ( false === get_option( self::RUNS_OPTION, false ) ) {
+			add_option( self::RUNS_OPTION, array(), '', false );
 		}
 	}
 
@@ -188,6 +191,104 @@ class WP_Automation_Storage {
 		return is_array( $logs ) ? $logs : array();
 	}
 
+	public function get_runs( $workflow_id = '' ) {
+		$runs = get_option( self::RUNS_OPTION, array() );
+
+		if ( ! is_array( $runs ) ) {
+			return array();
+		}
+
+		$runs = array_values(
+			array_filter(
+				array_map( array( $this, 'normalize_run' ), $runs )
+			)
+		);
+
+		if ( '' === $workflow_id ) {
+			return $runs;
+		}
+
+		return array_values(
+			array_filter(
+				$runs,
+				static function ( $run ) use ( $workflow_id ) {
+					return isset( $run['workflow_id'] ) && $run['workflow_id'] === $workflow_id;
+				}
+			)
+		);
+	}
+
+	public function get_run( $run_id ) {
+		foreach ( $this->get_runs() as $run ) {
+			if ( $run['id'] === $run_id ) {
+				return $run;
+			}
+		}
+
+		return null;
+	}
+
+	public function create_run( array $run ) {
+		$normalized = $this->normalize_run( $run );
+
+		if ( null === $normalized ) {
+			return null;
+		}
+
+		$runs   = $this->get_runs();
+		$runs[] = $normalized;
+		update_option( self::RUNS_OPTION, $runs, false );
+
+		return $normalized;
+	}
+
+	public function update_run( $run_id, array $attributes ) {
+		$runs = $this->get_runs();
+
+		foreach ( $runs as $index => $run ) {
+			if ( $run['id'] !== $run_id ) {
+				continue;
+			}
+
+			$merged = array_merge( $run, $attributes );
+
+			if ( isset( $attributes['steps'] ) && is_array( $attributes['steps'] ) ) {
+				$merged['steps'] = $attributes['steps'];
+			}
+
+			$normalized = $this->normalize_run( $merged );
+
+			if ( null === $normalized ) {
+				return null;
+			}
+
+			$runs[ $index ] = $normalized;
+			update_option( self::RUNS_OPTION, $runs, false );
+
+			return $normalized;
+		}
+
+		return null;
+	}
+
+	public function append_run_step( $run_id, array $step ) {
+		$run = $this->get_run( $run_id );
+
+		if ( ! $run ) {
+			return null;
+		}
+
+		$steps   = isset( $run['steps'] ) && is_array( $run['steps'] ) ? $run['steps'] : array();
+		$steps[] = $this->normalize_step( $step );
+
+		return $this->update_run(
+			$run_id,
+			array(
+				'steps' => $steps,
+			)
+		);
+	}
+
 	public function log( array $entry ) {
 		$logs   = $this->get_logs();
 		$logs[] = array(
@@ -254,6 +355,67 @@ class WP_Automation_Storage {
 			'variables' => isset( $workflow['variables'] ) && is_array( $workflow['variables'] ) ? $workflow['variables'] : array(),
 			'nodes'     => isset( $workflow['nodes'] ) && is_array( $workflow['nodes'] ) ? $workflow['nodes'] : array(),
 		);
+	}
+
+	private function normalize_run( $run ) {
+		if ( ! is_array( $run ) ) {
+			return null;
+		}
+
+		$id = isset( $run['id'] ) ? sanitize_key( $run['id'] ) : '';
+
+		if ( '' === $id ) {
+			return null;
+		}
+
+		$steps = array();
+
+		if ( isset( $run['steps'] ) && is_array( $run['steps'] ) ) {
+			foreach ( $run['steps'] as $step ) {
+				$steps[] = $this->normalize_step( $step );
+			}
+		}
+
+		return array(
+			'id'               => $id,
+			'workflow_id'      => isset( $run['workflow_id'] ) ? sanitize_key( $run['workflow_id'] ) : '',
+			'workflow_name'    => isset( $run['workflow_name'] ) ? sanitize_text_field( $run['workflow_name'] ) : '',
+			'workflow_version' => isset( $run['workflow_version'] ) ? sanitize_text_field( $run['workflow_version'] ) : '',
+			'status'           => isset( $run['status'] ) ? sanitize_key( $run['status'] ) : 'pending',
+			'trigger_data'     => $this->normalize_debug_value( $run['trigger_data'] ?? array() ),
+			'steps'            => $steps,
+			'started_at'       => isset( $run['started_at'] ) ? sanitize_text_field( $run['started_at'] ) : '',
+			'finished_at'      => isset( $run['finished_at'] ) ? sanitize_text_field( $run['finished_at'] ) : '',
+			'context_snapshot' => $this->normalize_debug_value( $run['context_snapshot'] ?? array() ),
+			'error_message'    => isset( $run['error_message'] ) ? sanitize_text_field( $run['error_message'] ) : '',
+		);
+	}
+
+	private function normalize_step( $step ) {
+		if ( ! is_array( $step ) ) {
+			$step = array();
+		}
+
+		return array(
+			'time'      => isset( $step['time'] ) ? sanitize_text_field( $step['time'] ) : current_time( 'mysql', true ),
+			'node_id'   => isset( $step['node_id'] ) ? sanitize_text_field( $step['node_id'] ) : '',
+			'node_type' => isset( $step['node_type'] ) ? sanitize_text_field( $step['node_type'] ) : '',
+			'status'    => isset( $step['status'] ) ? sanitize_key( $step['status'] ) : 'info',
+			'message'   => isset( $step['message'] ) ? sanitize_text_field( $step['message'] ) : '',
+			'context'   => $this->normalize_debug_value( $step['context'] ?? array() ),
+		);
+	}
+
+	private function normalize_debug_value( $value ) {
+		$encoded = wp_json_encode( $value );
+
+		if ( false === $encoded ) {
+			return array();
+		}
+
+		$decoded = json_decode( $encoded, true );
+
+		return null === $decoded ? array() : $decoded;
 	}
 
 	private function generate_workflow_id() {

@@ -4,10 +4,12 @@ class WP_Automation_Trigger_Agent {
 
 	protected $storage;
 	protected $kernel;
+	protected $trigger_registry;
 
-	public function __construct( WP_Automation_Storage $storage, WP_Automation_Kernel $kernel ) {
-		$this->storage = $storage;
-		$this->kernel  = $kernel;
+	public function __construct( WP_Automation_Storage $storage, WP_Automation_Kernel $kernel, WPAE_Trigger_Registry $trigger_registry ) {
+		$this->storage          = $storage;
+		$this->kernel           = $kernel;
+		$this->trigger_registry = $trigger_registry;
 	}
 
 	public function bootstrap() {
@@ -22,6 +24,10 @@ class WP_Automation_Trigger_Agent {
 
 			$trigger = isset( $workflow['trigger'] ) ? $workflow['trigger'] : array();
 
+			if ( ! in_array( $trigger['type'] ?? '', $this->trigger_registry->get_supported_types(), true ) ) {
+				continue;
+			}
+
 			switch ( $trigger['type'] ?? '' ) {
 				case 'action':
 					$this->register_action_trigger( $workflow );
@@ -34,6 +40,8 @@ class WP_Automation_Trigger_Agent {
 					break;
 				case 'internal_event':
 					$this->register_internal_event_trigger( $workflow );
+					break;
+				case 'manual':
 					break;
 			}
 		}
