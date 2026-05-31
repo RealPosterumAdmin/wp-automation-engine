@@ -9,12 +9,24 @@ class WP_Automation_Loop_Node implements WP_Automation_Node {
 	public function get_schema() {
 		return array(
 			'type'   => $this->get_type(),
-			'label'  => 'Loop',
+			'label'  => 'Цикл',
 			'icon'   => 'backup',
 			'fields' => array(
-				array( 'name' => 'source', 'type' => 'path' ),
-				array( 'name' => 'item_name', 'type' => 'text' ),
-				array( 'name' => 'nodes', 'type' => 'nodes' ),
+				array(
+					'name'  => 'source',
+					'label' => 'Источник',
+					'type'  => 'path',
+				),
+				array(
+					'name'  => 'item_name',
+					'label' => 'Имя элемента',
+					'type'  => 'text',
+				),
+				array(
+					'name'  => 'nodes',
+					'label' => 'Вложенные узлы',
+					'type'  => 'nodes',
+				),
 			),
 		);
 	}
@@ -26,7 +38,7 @@ class WP_Automation_Loop_Node implements WP_Automation_Node {
 		$child_nodes = isset( $config['nodes'] ) && is_array( $config['nodes'] ) ? $config['nodes'] : array();
 
 		if ( ! is_array( $items ) ) {
-			$executor->log_node( $context, $node, 'Loop source is not iterable', 'error', array( 'source' => $source ) );
+			$executor->log_node( $context, $node, 'Источник цикла не является перебираемым значением.', 'error', array( 'source' => $source ) );
 			return;
 		}
 
@@ -38,6 +50,6 @@ class WP_Automation_Loop_Node implements WP_Automation_Node {
 
 		$context->set_current_item( null );
 		$context->clear_local_variables();
-		$executor->log_node( $context, $node, 'Loop completed', 'success', array( 'iterations' => count( $items ) ) );
+		$executor->log_node( $context, $node, 'Цикл завершен.', 'success', array( 'iterations' => count( $items ) ) );
 	}
 }

@@ -9,11 +9,19 @@ class WP_Automation_Dispatch_Event_Node implements WP_Automation_Node {
 	public function get_schema() {
 		return array(
 			'type'   => $this->get_type(),
-			'label'  => 'Dispatch Event',
+			'label'  => 'Отправить событие',
 			'icon'   => 'megaphone',
 			'fields' => array(
-				array( 'name' => 'event', 'type' => 'text' ),
-				array( 'name' => 'payload', 'type' => 'object' ),
+				array(
+					'name'  => 'event',
+					'label' => 'Имя события',
+					'type'  => 'text',
+				),
+				array(
+					'name'  => 'payload',
+					'label' => 'Данные',
+					'type'  => 'object',
+				),
 			),
 		);
 	}
@@ -24,11 +32,11 @@ class WP_Automation_Dispatch_Event_Node implements WP_Automation_Node {
 		$payload = $executor->resolve_value( $config['payload'] ?? array(), $context );
 
 		if ( '' === $event ) {
-			$executor->log_node( $context, $node, 'Event name is missing', 'error' );
+			$executor->log_node( $context, $node, 'Не указано имя события.', 'error' );
 			return;
 		}
 
 		do_action( 'wp_automation_engine_internal_event_' . $event, is_array( $payload ) ? $payload : array( 'value' => $payload ) );
-		$executor->log_node( $context, $node, 'Internal event dispatched', 'success', array( 'event' => $event ) );
+		$executor->log_node( $context, $node, 'Внутреннее событие отправлено.', 'success', array( 'event' => $event ) );
 	}
 }

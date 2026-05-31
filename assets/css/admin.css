@@ -50,14 +50,12 @@
 	margin-bottom: 12px;
 }
 
-.wpae-admin .wpae-node-editor-advanced {
-	margin-top: 12px;
-}
-
-.wpae-admin .wpae-node-editor-advanced summary {
-	cursor: pointer;
-	font-weight: 600;
-	margin-bottom: 8px;
+.wpae-admin .wpae-data-root,
+.wpae-admin .wpae-data-editor,
+.wpae-admin .wpae-data-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
 }
 
 .wpae-admin .wpae-node-list,
@@ -74,9 +72,14 @@
 	background: #fff;
 }
 
+.wpae-admin .wpae-json-storage-field {
+	display: none !important;
+}
+
 .wpae-admin .wpae-node-list__actions,
 .wpae-admin .wpae-inline-actions,
-.wpae-admin .wpae-operand-row {
+.wpae-admin .wpae-operand-row,
+.wpae-admin .wpae-data-entry__header {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;
@@ -84,29 +87,34 @@
 }
 
 .wpae-admin .wpae-node-card,
-.wpae-admin .wpae-condition-card {
+.wpae-admin .wpae-condition-card,
+.wpae-admin .wpae-data-entry {
 	border: 1px solid #dcdcde;
 	background: #f6f7f7;
 	padding: 16px;
 }
 
 .wpae-admin .wpae-node-card[data-depth="1"],
-.wpae-admin .wpae-condition-card[data-depth="1"] {
+.wpae-admin .wpae-condition-card[data-depth="1"],
+.wpae-admin .wpae-data-entry[data-depth="1"] {
 	margin-left: 16px;
 }
 
 .wpae-admin .wpae-node-card[data-depth="2"],
-.wpae-admin .wpae-condition-card[data-depth="2"] {
+.wpae-admin .wpae-condition-card[data-depth="2"],
+.wpae-admin .wpae-data-entry[data-depth="2"] {
 	margin-left: 32px;
 }
 
 .wpae-admin .wpae-node-card[data-depth="3"],
-.wpae-admin .wpae-condition-card[data-depth="3"] {
+.wpae-admin .wpae-condition-card[data-depth="3"],
+.wpae-admin .wpae-data-entry[data-depth="3"] {
 	margin-left: 48px;
 }
 
 .wpae-admin .wpae-node-card__header,
-.wpae-admin .wpae-condition-card__header {
+.wpae-admin .wpae-condition-card__header,
+.wpae-admin .wpae-data-entry__header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -127,6 +135,12 @@
 	gap: 12px;
 }
 
+.wpae-admin .wpae-data-entry__body {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
 .wpae-admin .wpae-field {
 	display: flex;
 	flex-direction: column;
@@ -139,8 +153,19 @@
 
 .wpae-admin .wpae-json-field .large-text,
 .wpae-admin .wpae-field .large-text,
-.wpae-admin .wpae-operand-row .large-text {
+.wpae-admin .wpae-operand-row .large-text,
+.wpae-admin .wpae-data-editor .large-text {
 	min-height: 90px;
+}
+
+.wpae-admin .wpae-data-entry__header .wpae-field {
+	flex: 1 1 220px;
+	margin: 0;
+}
+
+.wpae-admin .wpae-data-entry__header > .regular-text,
+.wpae-admin .wpae-data-entry__header > .button {
+	flex: 0 0 auto;
 }
 
 .wpae-admin .wpae-editor-message {

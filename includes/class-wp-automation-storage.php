@@ -16,14 +16,14 @@ class WP_Automation_Storage {
 			array(
 				array(
 					'id'        => WP_Automation_Engine::DEFAULT_WORKFLOW_ID,
-					'name'      => 'Example workflow',
+					'name'      => 'Пример сценария',
 					'enabled'   => false,
 					'trigger'   => array(
 						'type' => 'action',
 						'hook' => 'init',
 					),
 					'variables' => array(
-						'message' => 'Hello from WP Automation Engine',
+						'message' => 'Привет из WP Automation Engine',
 					),
 					'nodes'     => array(
 						array(
@@ -32,7 +32,7 @@ class WP_Automation_Storage {
 							'config' => array(
 								'scope' => 'global',
 								'key'   => 'message',
-								'value' => 'Workflow executed on {{trigger.hook}}',
+								'value' => 'Сценарий выполнен на хуке {{trigger.hook}}',
 							),
 						),
 						array(

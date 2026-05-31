@@ -9,11 +9,19 @@ class WP_Automation_Action_Node implements WP_Automation_Node {
 	public function get_schema() {
 		return array(
 			'type'   => $this->get_type(),
-			'label'  => 'Run WordPress Action',
+			'label'  => 'Вызвать action WordPress',
 			'icon'   => 'admin-generic',
 			'fields' => array(
-				array( 'name' => 'hook', 'type' => 'text' ),
-				array( 'name' => 'payload', 'type' => 'object' ),
+				array(
+					'name'  => 'hook',
+					'label' => 'Имя хука',
+					'type'  => 'text',
+				),
+				array(
+					'name'  => 'payload',
+					'label' => 'Данные',
+					'type'  => 'object',
+				),
 			),
 		);
 	}
@@ -24,11 +32,11 @@ class WP_Automation_Action_Node implements WP_Automation_Node {
 		$payload = $executor->resolve_value( $config['payload'] ?? array(), $context );
 
 		if ( '' === $hook ) {
-			$executor->log_node( $context, $node, 'Action hook is missing', 'error' );
+			$executor->log_node( $context, $node, 'Не указано имя action-хука.', 'error' );
 			return;
 		}
 
 		do_action( $hook, $payload, $context->to_array() );
-		$executor->log_node( $context, $node, 'WordPress action dispatched', 'success', array( 'hook' => $hook ) );
+		$executor->log_node( $context, $node, 'Action-хук WordPress вызван.', 'success', array( 'hook' => $hook ) );
 	}
 }

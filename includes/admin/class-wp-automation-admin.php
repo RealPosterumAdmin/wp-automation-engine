@@ -16,8 +16,8 @@ class WP_Automation_Admin {
 
 	public function add_plugin_admin_menu() {
 		add_menu_page(
-			__( 'Automation Engine', 'wp-automation-engine' ),
-			__( 'Automation Engine', 'wp-automation-engine' ),
+			__( 'Движок автоматизации', 'wp-automation-engine' ),
+			__( 'Движок автоматизации', 'wp-automation-engine' ),
 			'manage_options',
 			$this->plugin_name,
 			array( $this, 'render_admin_page' ),
@@ -112,6 +112,38 @@ class WP_Automation_Admin {
 		}
 	}
 
+	private function format_schema_field_options( array $options ) {
+		$labels = array();
+
+		foreach ( $options as $option ) {
+			if ( is_array( $option ) ) {
+				$labels[] = isset( $option['label'] ) ? (string) $option['label'] : (string) ( $option['value'] ?? '' );
+				continue;
+			}
+
+			$labels[] = (string) $option;
+		}
+
+		return implode( ', ', array_filter( $labels ) );
+	}
+
+	private function get_log_status_label( $status ) {
+		switch ( $status ) {
+			case 'started':
+				return __( 'Запуск', 'wp-automation-engine' );
+			case 'success':
+				return __( 'Успех', 'wp-automation-engine' );
+			case 'error':
+				return __( 'Ошибка', 'wp-automation-engine' );
+			case 'info':
+				return __( 'Инфо', 'wp-automation-engine' );
+			case 'skipped':
+				return __( 'Пропущено', 'wp-automation-engine' );
+			default:
+				return (string) $status;
+		}
+	}
+
 	private function handle_save_request() {
 		if ( ! isset( $_POST['wp_automation_engine_save_workflow'] ) ) {
 			return;
@@ -145,7 +177,7 @@ class WP_Automation_Admin {
 			add_settings_error(
 				$this->plugin_name,
 				'workflow_save_error',
-				__( 'Workflow could not be saved.', 'wp-automation-engine' ),
+				__( 'Не удалось сохранить сценарий.', 'wp-automation-engine' ),
 				'error'
 			);
 			return;
@@ -169,42 +201,42 @@ class WP_Automation_Admin {
 		$enabled            = ! empty( $_POST['wp_automation_engine_workflow_enabled'] );
 
 		if ( '' === $name ) {
-			return new WP_Error( 'missing_name', __( 'Workflow name is required.', 'wp-automation-engine' ) );
+			return new WP_Error( 'missing_name', __( 'Укажите название сценария.', 'wp-automation-engine' ) );
 		}
 
 		$allowed_trigger_types = array( 'action', 'filter', 'cron', 'internal_event' );
 
 		if ( ! in_array( $trigger_type, $allowed_trigger_types, true ) ) {
-			return new WP_Error( 'invalid_trigger_type', __( 'Trigger type is invalid.', 'wp-automation-engine' ) );
+			return new WP_Error( 'invalid_trigger_type', __( 'Указан некорректный тип триггера.', 'wp-automation-engine' ) );
 		}
 
 		if ( 'edit' === $mode && '' === $existing_id ) {
-			return new WP_Error( 'missing_workflow_id', __( 'Workflow ID is missing.', 'wp-automation-engine' ) );
+			return new WP_Error( 'missing_workflow_id', __( 'Не найден ID сценария.', 'wp-automation-engine' ) );
 		}
 
 		if ( 'create' === $mode && '' !== $requested_id && $this->storage->workflow_exists( $requested_id ) ) {
-			return new WP_Error( 'duplicate_workflow_id', __( 'Workflow ID already exists.', 'wp-automation-engine' ) );
+			return new WP_Error( 'duplicate_workflow_id', __( 'Сценарий с таким ID уже существует.', 'wp-automation-engine' ) );
 		}
 
 		if ( in_array( $trigger_type, array( 'action', 'filter' ), true ) && '' === $trigger_hook ) {
-			return new WP_Error( 'missing_trigger_hook', __( 'Hook name is required for action and filter triggers.', 'wp-automation-engine' ) );
+			return new WP_Error( 'missing_trigger_hook', __( 'Для action и filter нужно указать имя хука.', 'wp-automation-engine' ) );
 		}
 
 		if ( 'cron' === $trigger_type && '' === $trigger_schedule ) {
-			return new WP_Error( 'missing_trigger_schedule', __( 'Schedule is required for cron triggers.', 'wp-automation-engine' ) );
+			return new WP_Error( 'missing_trigger_schedule', __( 'Для cron нужно указать расписание.', 'wp-automation-engine' ) );
 		}
 
 		if ( 'internal_event' === $trigger_type && '' === $trigger_event ) {
-			return new WP_Error( 'missing_trigger_event', __( 'Event name is required for internal event triggers.', 'wp-automation-engine' ) );
+			return new WP_Error( 'missing_trigger_event', __( 'Для внутреннего события нужно указать имя события.', 'wp-automation-engine' ) );
 		}
 
-		$variables = $this->decode_json_field( $variables_json_raw, __( 'Variables JSON must be a valid object or array.', 'wp-automation-engine' ) );
+		$variables = $this->decode_json_field( $variables_json_raw, __( 'Переменные сценария должны быть корректным объектом или массивом JSON.', 'wp-automation-engine' ) );
 
 		if ( is_wp_error( $variables ) ) {
 			return $variables;
 		}
 
-		$nodes = $this->decode_json_field( $nodes_json_raw, __( 'Nodes JSON must be a valid array.', 'wp-automation-engine' ) );
+		$nodes = $this->decode_json_field( $nodes_json_raw, __( 'Узлы сценария должны быть корректным массивом JSON.', 'wp-automation-engine' ) );
 
 		if ( is_wp_error( $nodes ) ) {
 			return $nodes;
@@ -246,25 +278,25 @@ class WP_Automation_Admin {
 		$logs      = array_reverse( $this->storage->get_logs() );
 		?>
 		<div class="wpae-admin-header">
-			<h1 class="wp-heading-inline"><?php echo esc_html__( 'Workflows', 'wp-automation-engine' ); ?></h1>
-			<a href="<?php echo esc_url( $this->get_new_url() ); ?>" class="page-title-action"><?php echo esc_html__( 'Add New', 'wp-automation-engine' ); ?></a>
+			<h1 class="wp-heading-inline"><?php echo esc_html__( 'Сценарии', 'wp-automation-engine' ); ?></h1>
+			<a href="<?php echo esc_url( $this->get_new_url() ); ?>" class="page-title-action"><?php echo esc_html__( 'Добавить сценарий', 'wp-automation-engine' ); ?></a>
 		</div>
-		<p><?php echo esc_html__( 'Manage workflows from a WordPress-style list instead of editing the full option JSON by hand.', 'wp-automation-engine' ); ?></p>
+		<p><?php echo esc_html__( 'Редактируйте сценарии через визуальный интерфейс. JSON обновляется автоматически и сохраняется как внутренний формат.', 'wp-automation-engine' ); ?></p>
 
 		<table class="widefat fixed striped">
 			<thead>
 				<tr>
-					<th><?php echo esc_html__( 'Name', 'wp-automation-engine' ); ?></th>
+					<th><?php echo esc_html__( 'Название', 'wp-automation-engine' ); ?></th>
 					<th><?php echo esc_html__( 'ID', 'wp-automation-engine' ); ?></th>
-					<th><?php echo esc_html__( 'Trigger', 'wp-automation-engine' ); ?></th>
-					<th><?php echo esc_html__( 'Enabled', 'wp-automation-engine' ); ?></th>
-					<th><?php echo esc_html__( 'Nodes', 'wp-automation-engine' ); ?></th>
+					<th><?php echo esc_html__( 'Триггер', 'wp-automation-engine' ); ?></th>
+					<th><?php echo esc_html__( 'Активен', 'wp-automation-engine' ); ?></th>
+					<th><?php echo esc_html__( 'Узлы', 'wp-automation-engine' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 				<?php if ( empty( $workflows ) ) : ?>
 					<tr>
-						<td colspan="5"><?php echo esc_html__( 'No workflows found.', 'wp-automation-engine' ); ?></td>
+						<td colspan="5"><?php echo esc_html__( 'Сценарии пока не созданы.', 'wp-automation-engine' ); ?></td>
 					</tr>
 				<?php else : ?>
 					<?php foreach ( $workflows as $workflow ) : ?>
@@ -276,15 +308,15 @@ class WP_Automation_Admin {
 									</a>
 								</strong>
 								<div class="row-actions">
-									<span class="edit"><a href="<?php echo esc_url( $this->get_edit_url( $workflow['id'] ) ); ?>"><?php echo esc_html__( 'Edit', 'wp-automation-engine' ); ?></a></span>
-									<span class="delete"> | <a href="<?php echo esc_url( $this->get_delete_url( $workflow['id'] ) ); ?>"><?php echo esc_html__( 'Delete', 'wp-automation-engine' ); ?></a></span>
+									<span class="edit"><a href="<?php echo esc_url( $this->get_edit_url( $workflow['id'] ) ); ?>"><?php echo esc_html__( 'Редактировать', 'wp-automation-engine' ); ?></a></span>
+									<span class="delete"> | <a href="<?php echo esc_url( $this->get_delete_url( $workflow['id'] ) ); ?>"><?php echo esc_html__( 'Удалить', 'wp-automation-engine' ); ?></a></span>
 								</div>
 							</td>
 							<td><code><?php echo esc_html( $workflow['id'] ); ?></code></td>
 							<td><?php echo esc_html( $this->get_trigger_summary( $workflow['trigger'] ?? array() ) ); ?></td>
 							<td>
 								<span class="dashicons <?php echo ! empty( $workflow['enabled'] ) ? esc_attr( 'dashicons-yes-alt wpae-status-enabled' ) : esc_attr( 'dashicons-dismiss wpae-status-disabled' ); ?>" aria-hidden="true"></span>
-								<span class="screen-reader-text"><?php echo ! empty( $workflow['enabled'] ) ? esc_html__( 'Enabled', 'wp-automation-engine' ) : esc_html__( 'Disabled', 'wp-automation-engine' ); ?></span>
+								<span class="screen-reader-text"><?php echo ! empty( $workflow['enabled'] ) ? esc_html__( 'Активен', 'wp-automation-engine' ) : esc_html__( 'Отключен', 'wp-automation-engine' ); ?></span>
 							</td>
 							<td><?php echo esc_html( count( $workflow['nodes'] ?? array() ) ); ?></td>
 						</tr>
@@ -293,19 +325,19 @@ class WP_Automation_Admin {
 			</tbody>
 		</table>
 
-		<h2><?php echo esc_html__( 'Recent Execution Log', 'wp-automation-engine' ); ?></h2>
+		<h2><?php echo esc_html__( 'Последние выполнения', 'wp-automation-engine' ); ?></h2>
 		<?php if ( empty( $logs ) ) : ?>
-			<p><?php echo esc_html__( 'No workflow executions yet.', 'wp-automation-engine' ); ?></p>
+			<p><?php echo esc_html__( 'Выполнений сценариев пока нет.', 'wp-automation-engine' ); ?></p>
 		<?php else : ?>
 			<table class="widefat striped">
 				<thead>
 					<tr>
-						<th><?php echo esc_html__( 'Time', 'wp-automation-engine' ); ?></th>
-						<th><?php echo esc_html__( 'Workflow', 'wp-automation-engine' ); ?></th>
-						<th><?php echo esc_html__( 'Node', 'wp-automation-engine' ); ?></th>
-						<th><?php echo esc_html__( 'Status', 'wp-automation-engine' ); ?></th>
-						<th><?php echo esc_html__( 'Message', 'wp-automation-engine' ); ?></th>
-						<th><?php echo esc_html__( 'Context', 'wp-automation-engine' ); ?></th>
+						<th><?php echo esc_html__( 'Время', 'wp-automation-engine' ); ?></th>
+						<th><?php echo esc_html__( 'Сценарий', 'wp-automation-engine' ); ?></th>
+						<th><?php echo esc_html__( 'Узел', 'wp-automation-engine' ); ?></th>
+						<th><?php echo esc_html__( 'Статус', 'wp-automation-engine' ); ?></th>
+						<th><?php echo esc_html__( 'Сообщение', 'wp-automation-engine' ); ?></th>
+						<th><?php echo esc_html__( 'Контекст', 'wp-automation-engine' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -314,7 +346,7 @@ class WP_Automation_Admin {
 							<td><?php echo esc_html( $log['time'] ?? '' ); ?></td>
 							<td><?php echo esc_html( $log['workflow_id'] ?? '' ); ?></td>
 							<td><?php echo esc_html( $log['node_id'] ?? '' ); ?></td>
-							<td><?php echo esc_html( $log['status'] ?? '' ); ?></td>
+							<td><?php echo esc_html( $this->get_log_status_label( $log['status'] ?? '' ) ); ?></td>
 							<td><?php echo esc_html( $log['message'] ?? '' ); ?></td>
 							<td><code><?php echo esc_html( wp_json_encode( $log['context'] ?? array(), JSON_UNESCAPED_SLASHES ) ); ?></code></td>
 						</tr>
@@ -329,16 +361,16 @@ class WP_Automation_Admin {
 		$state = $this->get_editor_state();
 
 		if ( empty( $state ) ) {
-			echo '<p>' . esc_html__( 'Workflow not found.', 'wp-automation-engine' ) . '</p>';
-			echo '<p><a href="' . esc_url( $this->get_list_url() ) . '" class="button">' . esc_html__( 'Back to workflows', 'wp-automation-engine' ) . '</a></p>';
+			echo '<p>' . esc_html__( 'Сценарий не найден.', 'wp-automation-engine' ) . '</p>';
+			echo '<p><a href="' . esc_url( $this->get_list_url() ) . '" class="button">' . esc_html__( 'Назад к сценариям', 'wp-automation-engine' ) . '</a></p>';
 			return;
 		}
 
 		$is_edit = 'edit' === $state['mode'];
 		?>
 		<div class="wpae-admin-header">
-			<h1 class="wp-heading-inline"><?php echo esc_html( $is_edit ? __( 'Edit Workflow', 'wp-automation-engine' ) : __( 'Add Workflow', 'wp-automation-engine' ) ); ?></h1>
-			<a href="<?php echo esc_url( $this->get_list_url() ); ?>" class="page-title-action"><?php echo esc_html__( 'Back to Workflows', 'wp-automation-engine' ); ?></a>
+			<h1 class="wp-heading-inline"><?php echo esc_html( $is_edit ? __( 'Редактирование сценария', 'wp-automation-engine' ) : __( 'Новый сценарий', 'wp-automation-engine' ) ); ?></h1>
+			<a href="<?php echo esc_url( $this->get_list_url() ); ?>" class="page-title-action"><?php echo esc_html__( 'Назад к сценариям', 'wp-automation-engine' ); ?></a>
 		</div>
 
 		<div class="wpae-admin-layout">
@@ -352,50 +384,50 @@ class WP_Automation_Admin {
 					<table class="form-table" role="presentation">
 						<tbody>
 							<tr>
-								<th scope="row"><label for="wp-automation-engine-workflow-name"><?php echo esc_html__( 'Name', 'wp-automation-engine' ); ?></label></th>
+								<th scope="row"><label for="wp-automation-engine-workflow-name"><?php echo esc_html__( 'Название', 'wp-automation-engine' ); ?></label></th>
 								<td>
 									<input type="text" id="wp-automation-engine-workflow-name" name="wp_automation_engine_workflow_name" class="regular-text" value="<?php echo esc_attr( $state['name'] ); ?>" required>
 								</td>
 							</tr>
 							<tr>
-								<th scope="row"><label for="wp-automation-engine-workflow-id"><?php echo esc_html__( 'Workflow ID', 'wp-automation-engine' ); ?></label></th>
+								<th scope="row"><label for="wp-automation-engine-workflow-id"><?php echo esc_html__( 'ID сценария', 'wp-automation-engine' ); ?></label></th>
 								<td>
 									<?php if ( $is_edit ) : ?>
 										<input type="text" id="wp-automation-engine-workflow-id" class="regular-text" value="<?php echo esc_attr( $state['existing_id'] ); ?>" readonly>
 									<?php else : ?>
 										<input type="text" id="wp-automation-engine-workflow-id" name="wp_automation_engine_workflow_id" class="regular-text" value="<?php echo esc_attr( $state['requested_id'] ); ?>">
-										<p class="description"><?php echo esc_html__( 'Optional. Leave empty to generate an ID automatically.', 'wp-automation-engine' ); ?></p>
+										<p class="description"><?php echo esc_html__( 'Необязательно. Оставьте пустым, чтобы ID создался автоматически.', 'wp-automation-engine' ); ?></p>
 									<?php endif; ?>
 								</td>
 							</tr>
 							<tr>
-								<th scope="row"><?php echo esc_html__( 'Enabled', 'wp-automation-engine' ); ?></th>
+								<th scope="row"><?php echo esc_html__( 'Активность', 'wp-automation-engine' ); ?></th>
 								<td>
 									<label for="wp-automation-engine-workflow-enabled">
 										<input type="checkbox" id="wp-automation-engine-workflow-enabled" name="wp_automation_engine_workflow_enabled" value="1" <?php checked( $state['enabled'] ); ?>>
-										<?php echo esc_html__( 'Workflow is active', 'wp-automation-engine' ); ?>
+										<?php echo esc_html__( 'Сценарий активен', 'wp-automation-engine' ); ?>
 									</label>
 								</td>
 							</tr>
 							<tr>
-								<th scope="row"><label for="wp-automation-engine-trigger-type"><?php echo esc_html__( 'Trigger Type', 'wp-automation-engine' ); ?></label></th>
+								<th scope="row"><label for="wp-automation-engine-trigger-type"><?php echo esc_html__( 'Тип триггера', 'wp-automation-engine' ); ?></label></th>
 								<td>
 									<select id="wp-automation-engine-trigger-type" name="wp_automation_engine_trigger_type">
-										<option value="action" <?php selected( $state['trigger_type'], 'action' ); ?>><?php echo esc_html__( 'WordPress Action', 'wp-automation-engine' ); ?></option>
-										<option value="filter" <?php selected( $state['trigger_type'], 'filter' ); ?>><?php echo esc_html__( 'WordPress Filter', 'wp-automation-engine' ); ?></option>
+										<option value="action" <?php selected( $state['trigger_type'], 'action' ); ?>><?php echo esc_html__( 'Action WordPress', 'wp-automation-engine' ); ?></option>
+										<option value="filter" <?php selected( $state['trigger_type'], 'filter' ); ?>><?php echo esc_html__( 'Filter WordPress', 'wp-automation-engine' ); ?></option>
 										<option value="cron" <?php selected( $state['trigger_type'], 'cron' ); ?>><?php echo esc_html__( 'Cron', 'wp-automation-engine' ); ?></option>
-										<option value="internal_event" <?php selected( $state['trigger_type'], 'internal_event' ); ?>><?php echo esc_html__( 'Internal Event', 'wp-automation-engine' ); ?></option>
+										<option value="internal_event" <?php selected( $state['trigger_type'], 'internal_event' ); ?>><?php echo esc_html__( 'Внутреннее событие', 'wp-automation-engine' ); ?></option>
 									</select>
 								</td>
 							</tr>
 							<tr class="wpae-trigger-row" data-trigger-types="action filter">
-								<th scope="row"><label for="wp-automation-engine-trigger-hook"><?php echo esc_html__( 'Hook Name', 'wp-automation-engine' ); ?></label></th>
+								<th scope="row"><label for="wp-automation-engine-trigger-hook"><?php echo esc_html__( 'Имя хука', 'wp-automation-engine' ); ?></label></th>
 								<td>
 									<input type="text" id="wp-automation-engine-trigger-hook" name="wp_automation_engine_trigger_hook" class="regular-text" value="<?php echo esc_attr( $state['trigger_hook'] ); ?>">
 								</td>
 							</tr>
 							<tr class="wpae-trigger-row" data-trigger-types="cron">
-								<th scope="row"><label for="wp-automation-engine-trigger-schedule"><?php echo esc_html__( 'Schedule', 'wp-automation-engine' ); ?></label></th>
+								<th scope="row"><label for="wp-automation-engine-trigger-schedule"><?php echo esc_html__( 'Расписание', 'wp-automation-engine' ); ?></label></th>
 								<td>
 									<select id="wp-automation-engine-trigger-schedule" name="wp_automation_engine_trigger_schedule">
 										<?php foreach ( wp_get_schedules() as $schedule_key => $schedule ) : ?>
@@ -405,40 +437,34 @@ class WP_Automation_Admin {
 								</td>
 							</tr>
 							<tr class="wpae-trigger-row" data-trigger-types="internal_event">
-								<th scope="row"><label for="wp-automation-engine-trigger-event"><?php echo esc_html__( 'Event Name', 'wp-automation-engine' ); ?></label></th>
+								<th scope="row"><label for="wp-automation-engine-trigger-event"><?php echo esc_html__( 'Имя события', 'wp-automation-engine' ); ?></label></th>
 								<td>
 									<input type="text" id="wp-automation-engine-trigger-event" name="wp_automation_engine_trigger_event" class="regular-text" value="<?php echo esc_attr( $state['trigger_event'] ); ?>">
 								</td>
 							</tr>
 							<tr>
-								<th scope="row"><label for="wp-automation-engine-variables-json"><?php echo esc_html__( 'Variables', 'wp-automation-engine' ); ?></label></th>
+								<th scope="row"><label for="wp-automation-engine-variables-json"><?php echo esc_html__( 'Переменные', 'wp-automation-engine' ); ?></label></th>
 								<td>
-									<textarea id="wp-automation-engine-variables-json" name="wp_automation_engine_workflow_variables_json" class="large-text code" rows="8"><?php echo esc_textarea( $state['variables_json'] ); ?></textarea>
-									<p class="description"><?php echo esc_html__( 'Use a JSON object or array for workflow variables.', 'wp-automation-engine' ); ?></p>
+									<div id="wpae-variable-editor" class="wpae-data-root" data-target-input="wp-automation-engine-variables-json"></div>
+									<p class="description"><?php echo esc_html__( 'Редактор меняет структуру переменных визуально, а JSON обновляется автоматически.', 'wp-automation-engine' ); ?></p>
+									<textarea id="wp-automation-engine-variables-json" name="wp_automation_engine_workflow_variables_json" class="wpae-json-storage-field" rows="8"><?php echo esc_textarea( $state['variables_json'] ); ?></textarea>
 								</td>
 							</tr>
 							<tr>
-								<th scope="row"><label for="wp-automation-engine-nodes-json"><?php echo esc_html__( 'Nodes', 'wp-automation-engine' ); ?></label></th>
+								<th scope="row"><label for="wp-automation-engine-nodes-json"><?php echo esc_html__( 'Узлы', 'wp-automation-engine' ); ?></label></th>
 								<td>
 									<div id="wpae-node-editor" class="wpae-node-editor" data-target-input="wp-automation-engine-nodes-json"></div>
-									<p class="description"><?php echo esc_html__( 'Build nodes with the schema-driven editor below. The raw JSON fallback stays available for manual fixes and recovery.', 'wp-automation-engine' ); ?></p>
-									<details class="wpae-node-editor-advanced">
-										<summary><?php echo esc_html__( 'Raw Nodes JSON', 'wp-automation-engine' ); ?></summary>
-										<textarea id="wp-automation-engine-nodes-json" name="wp_automation_engine_workflow_nodes_json" class="large-text code wpae-node-editor-json" rows="16"><?php echo esc_textarea( $state['nodes_json'] ); ?></textarea>
-										<p class="description"><?php echo esc_html__( 'If you edit the JSON manually, click the reload button so the visual editor picks up the changes.', 'wp-automation-engine' ); ?></p>
-										<p>
-											<button type="button" class="button" id="wpae-node-editor-reload"><?php echo esc_html__( 'Reload visual editor from JSON', 'wp-automation-engine' ); ?></button>
-										</p>
-									</details>
+									<p class="description"><?php echo esc_html__( 'Редактор управляет JSON узлов автоматически. Логика выполнения и интерфейс остаются независимыми.', 'wp-automation-engine' ); ?></p>
+									<textarea id="wp-automation-engine-nodes-json" name="wp_automation_engine_workflow_nodes_json" class="wpae-json-storage-field" rows="16"><?php echo esc_textarea( $state['nodes_json'] ); ?></textarea>
 									<noscript>
-										<p class="description"><?php echo esc_html__( 'JavaScript is disabled. Edit the workflow nodes in the JSON field above.', 'wp-automation-engine' ); ?></p>
+										<p class="description"><?php echo esc_html__( 'Для визуального редактора нужен JavaScript.', 'wp-automation-engine' ); ?></p>
 									</noscript>
 								</td>
 							</tr>
 						</tbody>
 					</table>
 
-					<?php submit_button( $is_edit ? __( 'Update Workflow', 'wp-automation-engine' ) : __( 'Create Workflow', 'wp-automation-engine' ), 'primary', 'wp_automation_engine_save_workflow' ); ?>
+					<?php submit_button( $is_edit ? __( 'Сохранить сценарий', 'wp-automation-engine' ) : __( 'Создать сценарий', 'wp-automation-engine' ), 'primary', 'wp_automation_engine_save_workflow' ); ?>
 				</form>
 
 				<?php $this->render_node_summary( $state['nodes'] ); ?>
@@ -453,15 +479,15 @@ class WP_Automation_Admin {
 
 	private function render_node_summary( array $nodes ) {
 		?>
-		<h2><?php echo esc_html__( 'Node Summary', 'wp-automation-engine' ); ?></h2>
+		<h2><?php echo esc_html__( 'Краткий список узлов', 'wp-automation-engine' ); ?></h2>
 		<?php if ( empty( $nodes ) ) : ?>
-			<p><?php echo esc_html__( 'No nodes configured yet.', 'wp-automation-engine' ); ?></p>
+			<p><?php echo esc_html__( 'Узлы пока не добавлены.', 'wp-automation-engine' ); ?></p>
 		<?php else : ?>
 			<table class="widefat striped">
 				<thead>
 					<tr>
-						<th><?php echo esc_html__( 'Node ID', 'wp-automation-engine' ); ?></th>
-						<th><?php echo esc_html__( 'Type', 'wp-automation-engine' ); ?></th>
+						<th><?php echo esc_html__( 'ID узла', 'wp-automation-engine' ); ?></th>
+						<th><?php echo esc_html__( 'Тип', 'wp-automation-engine' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -480,7 +506,7 @@ class WP_Automation_Admin {
 	private function render_schema_guide() {
 		$schemas = $this->node_factory->get_schemas();
 		?>
-		<h2><?php echo esc_html__( 'Available Node Schemas', 'wp-automation-engine' ); ?></h2>
+		<h2><?php echo esc_html__( 'Доступные схемы узлов', 'wp-automation-engine' ); ?></h2>
 		<div class="wpae-schema-list">
 			<?php foreach ( $schemas as $schema ) : ?>
 				<div class="postbox">
@@ -496,10 +522,10 @@ class WP_Automation_Admin {
 							<ul>
 								<?php foreach ( $schema['fields'] as $field ) : ?>
 									<li>
-										<strong><?php echo esc_html( $field['name'] ?? '' ); ?></strong>
-										<span class="description">— <?php echo esc_html( $field['type'] ?? '' ); ?></span>
+										<strong><?php echo esc_html( $this->get_schema_field_label( $field ) ); ?></strong>
+										<span class="description">— <?php echo esc_html( $this->get_field_type_label( $field['type'] ?? '' ) ); ?></span>
 										<?php if ( ! empty( $field['options'] ) && is_array( $field['options'] ) ) : ?>
-											<div class="description"><?php echo esc_html( implode( ', ', $field['options'] ) ); ?></div>
+											<div class="description"><?php echo esc_html( $this->format_schema_field_options( $field['options'] ) ); ?></div>
 										<?php endif; ?>
 									</li>
 								<?php endforeach; ?>
@@ -510,6 +536,35 @@ class WP_Automation_Admin {
 			<?php endforeach; ?>
 		</div>
 		<?php
+	}
+
+	private function get_schema_field_label( array $field ) {
+		if ( ! empty( $field['label'] ) ) {
+			return (string) $field['label'];
+		}
+
+		return (string) ( $field['name'] ?? '' );
+	}
+
+	private function get_field_type_label( $type ) {
+		switch ( $type ) {
+			case 'text':
+				return __( 'Текст', 'wp-automation-engine' );
+			case 'path':
+				return __( 'Путь', 'wp-automation-engine' );
+			case 'select':
+				return __( 'Список', 'wp-automation-engine' );
+			case 'mixed':
+				return __( 'Любое значение', 'wp-automation-engine' );
+			case 'object':
+				return __( 'Объект или массив', 'wp-automation-engine' );
+			case 'condition':
+				return __( 'Условие', 'wp-automation-engine' );
+			case 'nodes':
+				return __( 'Вложенные узлы', 'wp-automation-engine' );
+			default:
+				return (string) $type;
+		}
 	}
 
 	private function get_editor_state() {
@@ -537,8 +592,8 @@ class WP_Automation_Admin {
 				'trigger_hook'     => $workflow['trigger']['hook'] ?? '',
 				'trigger_schedule' => $workflow['trigger']['schedule'] ?? 'hourly',
 				'trigger_event'    => $workflow['trigger']['event'] ?? '',
-				'variables_json'   => wp_json_encode( $workflow['variables'] ?? array(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ),
-				'nodes_json'       => wp_json_encode( $workflow['nodes'] ?? array(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ),
+				'variables_json'   => wp_json_encode( $workflow['variables'] ?? array(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),
+				'nodes_json'       => wp_json_encode( $workflow['nodes'] ?? array(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),
 				'nodes'            => is_array( $workflow['nodes'] ?? null ) ? $workflow['nodes'] : array(),
 			);
 		}
@@ -592,13 +647,13 @@ class WP_Automation_Admin {
 			case 'action':
 				return sprintf(
 					/* translators: %s: action hook. */
-					__( 'Action: %s', 'wp-automation-engine' ),
+					__( 'Action-хук: %s', 'wp-automation-engine' ),
 					$trigger['hook'] ?? ''
 				);
 			case 'filter':
 				return sprintf(
 					/* translators: %s: filter hook. */
-					__( 'Filter: %s', 'wp-automation-engine' ),
+					__( 'Filter-хук: %s', 'wp-automation-engine' ),
 					$trigger['hook'] ?? ''
 				);
 			case 'cron':
@@ -610,11 +665,11 @@ class WP_Automation_Admin {
 			case 'internal_event':
 				return sprintf(
 					/* translators: %s: internal event. */
-					__( 'Event: %s', 'wp-automation-engine' ),
+					__( 'Событие: %s', 'wp-automation-engine' ),
 					$trigger['event'] ?? ''
 				);
 			default:
-				return __( 'Not configured', 'wp-automation-engine' );
+				return __( 'Не настроен', 'wp-automation-engine' );
 		}
 	}
 
@@ -623,13 +678,13 @@ class WP_Automation_Admin {
 
 		switch ( $notice ) {
 			case 'created':
-				add_settings_error( $this->plugin_name, 'workflow_created', __( 'Workflow created.', 'wp-automation-engine' ), 'updated' );
+				add_settings_error( $this->plugin_name, 'workflow_created', __( 'Сценарий создан.', 'wp-automation-engine' ), 'updated' );
 				break;
 			case 'updated':
-				add_settings_error( $this->plugin_name, 'workflow_updated', __( 'Workflow updated.', 'wp-automation-engine' ), 'updated' );
+				add_settings_error( $this->plugin_name, 'workflow_updated', __( 'Сценарий сохранен.', 'wp-automation-engine' ), 'updated' );
 				break;
 			case 'deleted':
-				add_settings_error( $this->plugin_name, 'workflow_deleted', __( 'Workflow deleted.', 'wp-automation-engine' ), 'updated' );
+				add_settings_error( $this->plugin_name, 'workflow_deleted', __( 'Сценарий удален.', 'wp-automation-engine' ), 'updated' );
 				break;
 		}
 	}
