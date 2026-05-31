@@ -2,21 +2,28 @@
 
 class WP_Automation_Kernel {
 
-	protected $storage;
-	protected $executor;
+	protected $dispatch_trigger;
 
-	public function __construct( WP_Automation_Storage $storage, WP_Automation_Executor $executor ) {
-		$this->storage  = $storage;
-		$this->executor = $executor;
+	public function __construct( WPAE_Dispatch_Trigger $dispatch_trigger ) {
+		$this->dispatch_trigger = $dispatch_trigger;
 	}
 
 	public function handle_workflow_trigger( $workflow_id, array $trigger_data = array() ) {
-		$workflow = $this->storage->get_workflow( $workflow_id );
+		return $this->dispatch_trigger->dispatch( $workflow_id, $trigger_data );
+	}
 
-		if ( ! $workflow || empty( $workflow['enabled'] ) ) {
-			return;
-		}
-
-		$this->executor->execute_workflow( $workflow, $trigger_data );
+	public function run_manual_workflow( $workflow_id, array $trigger_data = array() ) {
+		return $this->dispatch_trigger->dispatch(
+			$workflow_id,
+			array_merge(
+				array(
+					'type' => 'manual',
+				),
+				$trigger_data
+			),
+			array(
+				'force' => true,
+			)
+		);
 	}
 }

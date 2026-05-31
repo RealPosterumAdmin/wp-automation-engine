@@ -36,7 +36,7 @@ class WP_Automation_Dispatch_Event_Node implements WP_Automation_Node {
 			return;
 		}
 
-		do_action( 'wp_automation_engine_internal_event_' . $event, is_array( $payload ) ? $payload : array( 'value' => $payload ) );
+		$executor->dispatch_internal_event( $event, is_array( $payload ) ? $payload : array( 'value' => $payload ) );
 		$executor->log_node( $context, $node, 'Внутреннее событие отправлено.', 'success', array( 'event' => $event ) );
 	}
 }

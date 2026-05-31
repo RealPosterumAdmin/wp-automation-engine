@@ -6,12 +6,14 @@ class WP_Automation_Admin {
 	protected $version;
 	protected $storage;
 	protected $node_factory;
+	protected $kernel;
 
-	public function __construct( $plugin_name, $version, WP_Automation_Storage $storage, WP_Automation_Node_Factory $node_factory ) {
+	public function __construct( $plugin_name, $version, WP_Automation_Storage $storage, WP_Automation_Node_Factory $node_factory, WP_Automation_Kernel $kernel ) {
 		$this->plugin_name  = $plugin_name;
 		$this->version      = $version;
 		$this->storage      = $storage;
 		$this->node_factory = $node_factory;
+		$this->kernel       = $kernel;
 	}
 
 	public function add_plugin_admin_menu() {
@@ -68,6 +70,7 @@ class WP_Automation_Admin {
 		}
 
 		$this->handle_delete_request();
+		$this->handle_run_request();
 		$this->handle_save_request();
 	}
 
@@ -110,6 +113,37 @@ class WP_Automation_Admin {
 			$this->storage->clear_cron_events();
 			$this->redirect_to_list( 'deleted' );
 		}
+	}
+
+	private function handle_run_request() {
+		$action = isset( $_GET['action'] ) ? sanitize_key( wp_unslash( $_GET['action'] ) ) : '';
+
+		if ( 'run' !== $action ) {
+			return;
+		}
+
+		$workflow_id = isset( $_GET['id'] ) ? sanitize_key( wp_unslash( $_GET['id'] ) ) : '';
+
+		if ( '' === $workflow_id ) {
+			return;
+		}
+
+		check_admin_referer( 'wp_automation_engine_run_workflow_' . $workflow_id );
+
+		$result = $this->kernel->run_manual_workflow(
+			$workflow_id,
+			array(
+				'source'  => 'admin',
+				'user_id' => get_current_user_id(),
+			)
+		);
+
+		if ( is_wp_error( $result ) ) {
+			add_settings_error( $this->plugin_name, 'workflow_run_error', $result->get_error_message(), 'error' );
+			return;
+		}
+
+		$this->redirect_to_edit( $workflow_id, 'run_started' );
 	}
 
 	private function format_schema_field_options( array $options ) {
@@ -204,7 +238,7 @@ class WP_Automation_Admin {
 			return new WP_Error( 'missing_name', __( 'Укажите название сценария.', 'wp-automation-engine' ) );
 		}
 
-		$allowed_trigger_types = array( 'action', 'filter', 'cron', 'internal_event' );
+		$allowed_trigger_types = array( 'action', 'filter', 'cron', 'internal_event', 'manual' );
 
 		if ( ! in_array( $trigger_type, $allowed_trigger_types, true ) ) {
 			return new WP_Error( 'invalid_trigger_type', __( 'Указан некорректный тип триггера.', 'wp-automation-engine' ) );
@@ -276,6 +310,7 @@ class WP_Automation_Admin {
 	private function render_workflows_screen() {
 		$workflows = $this->storage->get_workflows();
 		$logs      = array_reverse( $this->storage->get_logs() );
+		$runs      = array_reverse( $this->storage->get_runs() );
 		?>
 		<div class="wpae-admin-header">
 			<h1 class="wp-heading-inline"><?php echo esc_html__( 'Сценарии', 'wp-automation-engine' ); ?></h1>
@@ -309,6 +344,7 @@ class WP_Automation_Admin {
 								</strong>
 								<div class="row-actions">
 									<span class="edit"><a href="<?php echo esc_url( $this->get_edit_url( $workflow['id'] ) ); ?>"><?php echo esc_html__( 'Редактировать', 'wp-automation-engine' ); ?></a></span>
+									<span class="view"> | <a href="<?php echo esc_url( $this->get_run_url( $workflow['id'] ) ); ?>"><?php echo esc_html__( 'Запустить', 'wp-automation-engine' ); ?></a></span>
 									<span class="delete"> | <a href="<?php echo esc_url( $this->get_delete_url( $workflow['id'] ) ); ?>"><?php echo esc_html__( 'Удалить', 'wp-automation-engine' ); ?></a></span>
 								</div>
 							</td>
@@ -326,6 +362,38 @@ class WP_Automation_Admin {
 		</table>
 
 		<h2><?php echo esc_html__( 'Последние выполнения', 'wp-automation-engine' ); ?></h2>
+		<?php if ( empty( $runs ) ) : ?>
+			<p><?php echo esc_html__( 'История запусков пока пуста.', 'wp-automation-engine' ); ?></p>
+		<?php else : ?>
+			<table class="widefat striped">
+				<thead>
+					<tr>
+						<th><?php echo esc_html__( 'Run ID', 'wp-automation-engine' ); ?></th>
+						<th><?php echo esc_html__( 'Сценарий', 'wp-automation-engine' ); ?></th>
+						<th><?php echo esc_html__( 'Статус', 'wp-automation-engine' ); ?></th>
+						<th><?php echo esc_html__( 'Триггер', 'wp-automation-engine' ); ?></th>
+						<th><?php echo esc_html__( 'Запущен', 'wp-automation-engine' ); ?></th>
+						<th><?php echo esc_html__( 'Завершен', 'wp-automation-engine' ); ?></th>
+						<th><?php echo esc_html__( 'Шагов', 'wp-automation-engine' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $runs as $run ) : ?>
+						<tr>
+							<td><code><?php echo esc_html( $run['id'] ?? '' ); ?></code></td>
+							<td><?php echo esc_html( $run['workflow_name'] ?? ( $run['workflow_id'] ?? '' ) ); ?></td>
+							<td><?php echo esc_html( $this->get_log_status_label( $run['status'] ?? '' ) ); ?></td>
+							<td><code><?php echo esc_html( wp_json_encode( $run['trigger_data'] ?? array(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></code></td>
+							<td><?php echo esc_html( $run['started_at'] ?? '' ); ?></td>
+							<td><?php echo esc_html( $run['finished_at'] ?? '' ); ?></td>
+							<td><?php echo esc_html( count( $run['steps'] ?? array() ) ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php endif; ?>
+
+		<h2><?php echo esc_html__( 'Последние записи логов', 'wp-automation-engine' ); ?></h2>
 		<?php if ( empty( $logs ) ) : ?>
 			<p><?php echo esc_html__( 'Выполнений сценариев пока нет.', 'wp-automation-engine' ); ?></p>
 		<?php else : ?>
@@ -371,6 +439,9 @@ class WP_Automation_Admin {
 		<div class="wpae-admin-header">
 			<h1 class="wp-heading-inline"><?php echo esc_html( $is_edit ? __( 'Редактирование сценария', 'wp-automation-engine' ) : __( 'Новый сценарий', 'wp-automation-engine' ) ); ?></h1>
 			<a href="<?php echo esc_url( $this->get_list_url() ); ?>" class="page-title-action"><?php echo esc_html__( 'Назад к сценариям', 'wp-automation-engine' ); ?></a>
+			<?php if ( $is_edit ) : ?>
+				<a href="<?php echo esc_url( $this->get_run_url( $state['existing_id'] ) ); ?>" class="page-title-action"><?php echo esc_html__( 'Запустить сейчас', 'wp-automation-engine' ); ?></a>
+			<?php endif; ?>
 		</div>
 
 		<div class="wpae-admin-layout">
@@ -417,6 +488,7 @@ class WP_Automation_Admin {
 										<option value="filter" <?php selected( $state['trigger_type'], 'filter' ); ?>><?php echo esc_html__( 'Filter WordPress', 'wp-automation-engine' ); ?></option>
 										<option value="cron" <?php selected( $state['trigger_type'], 'cron' ); ?>><?php echo esc_html__( 'Cron', 'wp-automation-engine' ); ?></option>
 										<option value="internal_event" <?php selected( $state['trigger_type'], 'internal_event' ); ?>><?php echo esc_html__( 'Внутреннее событие', 'wp-automation-engine' ); ?></option>
+										<option value="manual" <?php selected( $state['trigger_type'], 'manual' ); ?>><?php echo esc_html__( 'Ручной запуск', 'wp-automation-engine' ); ?></option>
 									</select>
 								</td>
 							</tr>
@@ -668,6 +740,8 @@ class WP_Automation_Admin {
 					__( 'Событие: %s', 'wp-automation-engine' ),
 					$trigger['event'] ?? ''
 				);
+			case 'manual':
+				return __( 'Ручной запуск', 'wp-automation-engine' );
 			default:
 				return __( 'Не настроен', 'wp-automation-engine' );
 		}
@@ -685,6 +759,9 @@ class WP_Automation_Admin {
 				break;
 			case 'deleted':
 				add_settings_error( $this->plugin_name, 'workflow_deleted', __( 'Сценарий удален.', 'wp-automation-engine' ), 'updated' );
+				break;
+			case 'run_started':
+				add_settings_error( $this->plugin_name, 'workflow_run_started', __( 'Сценарий поставлен на запуск.', 'wp-automation-engine' ), 'updated' );
 				break;
 		}
 	}
@@ -705,6 +782,13 @@ class WP_Automation_Admin {
 		return wp_nonce_url(
 			admin_url( 'admin.php?page=' . $this->plugin_name . '&action=delete&id=' . rawurlencode( $workflow_id ) ),
 			'wp_automation_engine_delete_workflow_' . $workflow_id
+		);
+	}
+
+	private function get_run_url( $workflow_id ) {
+		return wp_nonce_url(
+			admin_url( 'admin.php?page=' . $this->plugin_name . '&action=run&id=' . rawurlencode( $workflow_id ) ),
+			'wp_automation_engine_run_workflow_' . $workflow_id
 		);
 	}
 
