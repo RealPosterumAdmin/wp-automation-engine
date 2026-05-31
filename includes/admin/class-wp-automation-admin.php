@@ -7,6 +7,7 @@ class WP_Automation_Admin {
 	protected $storage;
 	protected $node_factory;
 	protected $kernel;
+	protected $state_store;
 
 	public function __construct( $plugin_name, $version, WP_Automation_Storage $storage, WP_Automation_Node_Factory $node_factory, WP_Automation_Kernel $kernel ) {
 		$this->plugin_name  = $plugin_name;
@@ -14,6 +15,7 @@ class WP_Automation_Admin {
 		$this->storage      = $storage;
 		$this->node_factory = $node_factory;
 		$this->kernel       = $kernel;
+		$this->state_store  = new WPAE_Workflow_State_Store();
 	}
 
 	public function add_plugin_admin_menu() {
@@ -111,6 +113,7 @@ class WP_Automation_Admin {
 
 		if ( $this->storage->delete_workflow( $workflow_id ) ) {
 			$this->storage->clear_cron_events();
+			$this->state_store->delete_workflow_states( $workflow_id );
 			$this->redirect_to_list( 'deleted' );
 		}
 	}
@@ -393,6 +396,9 @@ class WP_Automation_Admin {
 			</table>
 		<?php endif; ?>
 
+		<h2><?php echo esc_html__( 'Состояние синхронизации', 'wp-automation-engine' ); ?></h2>
+		<?php $this->render_workflow_state_table(); ?>
+
 		<h2><?php echo esc_html__( 'Последние записи логов', 'wp-automation-engine' ); ?></h2>
 		<?php if ( empty( $logs ) ) : ?>
 			<p><?php echo esc_html__( 'Выполнений сценариев пока нет.', 'wp-automation-engine' ); ?></p>
@@ -540,6 +546,9 @@ class WP_Automation_Admin {
 				</form>
 
 				<?php $this->render_node_summary( $state['nodes'] ); ?>
+				<?php if ( $is_edit ) : ?>
+					<?php $this->render_workflow_state_table( $state['existing_id'] ); ?>
+				<?php endif; ?>
 			</div>
 
 			<div class="wpae-admin-sidebar">
@@ -607,6 +616,93 @@ class WP_Automation_Admin {
 				</div>
 			<?php endforeach; ?>
 		</div>
+		<?php
+	}
+
+	private function render_workflow_state_table( $workflow_id = '' ) {
+		$workflow_ids = array();
+
+		if ( '' !== $workflow_id ) {
+			$workflow_ids[] = $workflow_id;
+		} else {
+			foreach ( $this->storage->get_workflows() as $workflow ) {
+				$workflow_ids[] = $workflow['id'];
+			}
+		}
+
+		$rows = array();
+
+		foreach ( array_unique( array_filter( $workflow_ids ) ) as $current_workflow_id ) {
+			foreach ( $this->state_store->get_workflow_states( $current_workflow_id ) as $state_key => $state ) {
+				if ( ! is_array( $state ) ) {
+					continue;
+				}
+
+				$rows[] = array(
+					'workflow_id' => $current_workflow_id,
+					'state_key'   => $state_key,
+					'state'       => $state,
+				);
+			}
+		}
+
+		if ( empty( $rows ) ) {
+			echo '<p>' . esc_html__( 'Сохраненное состояние синхронизации пока отсутствует.', 'wp-automation-engine' ) . '</p>';
+			return;
+		}
+		?>
+		<table class="widefat striped">
+			<thead>
+				<tr>
+					<th><?php echo esc_html__( 'Сценарий', 'wp-automation-engine' ); ?></th>
+					<th><?php echo esc_html__( 'Ключ состояния', 'wp-automation-engine' ); ?></th>
+					<th><?php echo esc_html__( 'Обновлено', 'wp-automation-engine' ); ?></th>
+					<th><?php echo esc_html__( 'Статус', 'wp-automation-engine' ); ?></th>
+					<th><?php echo esc_html__( 'Прогресс', 'wp-automation-engine' ); ?></th>
+					<th><?php echo esc_html__( 'Экспорт', 'wp-automation-engine' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php foreach ( $rows as $row ) : ?>
+					<?php $state = $row['state']; ?>
+					<tr>
+						<td><?php echo esc_html( $row['workflow_id'] ); ?></td>
+						<td><code><?php echo esc_html( $row['state_key'] ); ?></code></td>
+						<td><?php echo esc_html( $state['updated_at'] ?? '' ); ?></td>
+						<td>
+							<?php
+							if ( isset( $state['finished'] ) ) {
+								echo esc_html( ! empty( $state['finished'] ) ? __( 'Завершено', 'wp-automation-engine' ) : __( 'В процессе', 'wp-automation-engine' ) );
+							} elseif ( 'export' === ( $state['type'] ?? '' ) ) {
+								echo esc_html__( 'Экспорт создан', 'wp-automation-engine' );
+							} else {
+								echo esc_html__( 'Сохранено', 'wp-automation-engine' );
+							}
+							?>
+						</td>
+						<td>
+							<?php
+							if ( isset( $state['total'] ) ) {
+								echo esc_html(
+									sprintf(
+										/* translators: 1: processed items, 2: total items. */
+										__( '%1$d из %2$d', 'wp-automation-engine' ),
+										isset( $state['processed'] ) ? absint( $state['processed'] ) : 0,
+										absint( $state['total'] )
+									)
+								);
+							}
+							?>
+						</td>
+						<td>
+							<?php if ( ! empty( $state['file']['url'] ) ) : ?>
+								<a href="<?php echo esc_url( $state['file']['url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $state['file']['filename'] ?? __( 'Скачать JSON', 'wp-automation-engine' ) ); ?></a>
+							<?php endif; ?>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
 		<?php
 	}
 

@@ -137,10 +137,12 @@ class WP_Automation_Executor {
 						'message'     => 'Неизвестный тип узла.',
 					)
 				);
+				$this->persist_context_snapshot( $context );
 				continue;
 			}
 
 			$handler->execute( $node, $context, $this );
+			$this->persist_context_snapshot( $context );
 		}
 	}
 
@@ -185,6 +187,28 @@ class WP_Automation_Executor {
 				)
 			);
 		}
+	}
+
+	public function persist_context_snapshot( WP_Automation_Context $context, array $attributes = array() ) {
+		if ( ! $this->run_repository ) {
+			return;
+		}
+
+		$run_id = $context->get_runtime()['run_id'] ?? '';
+
+		if ( '' === $run_id ) {
+			return;
+		}
+
+		$this->run_repository->update(
+			$run_id,
+			array_merge(
+				array(
+					'context_snapshot' => $context->to_array(),
+				),
+				$attributes
+			)
+		);
 	}
 
 	public function dispatch_internal_event( $event_name, array $payload = array() ) {

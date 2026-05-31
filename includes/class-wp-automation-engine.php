@@ -37,6 +37,11 @@ class WP_Automation_Engine {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-action-node.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-if-node.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-loop-node.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-http-request-node.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-build-catalog-tree-node.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-sync-wc-categories-node.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-sync-wc-products-node.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-export-json-node.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-node-factory.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-executor.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-kernel.php';
@@ -69,7 +74,12 @@ class WP_Automation_Engine {
 		$this->storage      = new WP_Automation_Storage();
 		$this->storage->bootstrap_defaults();
 		$condition_engine    = new WP_Automation_Condition_Evaluator();
-		$this->node_factory  = new WP_Automation_Node_Factory( $condition_engine );
+		$http_client         = new WPAE_WordPress_Http_Client();
+		$tree_builder        = new WPAE_Catalog_Tree_Builder();
+		$workflow_state_store = new WPAE_Workflow_State_Store();
+		$json_export_service = new WPAE_JSON_Export_Service();
+		$woocommerce_sync    = new WPAE_WooCommerce_Sync_Service( $tree_builder );
+		$this->node_factory  = new WP_Automation_Node_Factory( $condition_engine, $http_client, $tree_builder, $woocommerce_sync, $workflow_state_store, $json_export_service );
 		$workflow_repository = new WPAE_Storage_Workflow_Repository( $this->storage );
 		$run_repository      = new WPAE_Storage_Run_Repository( $this->storage );
 		$queue               = new WPAE_Sync_Queue();
