@@ -9,12 +9,34 @@ class WP_Automation_Set_Variable_Node implements WP_Automation_Node {
 	public function get_schema() {
 		return array(
 			'type'   => $this->get_type(),
-			'label'  => 'Set Variable',
+			'label'  => 'Установить переменную',
 			'icon'   => 'update',
 			'fields' => array(
-				array( 'name' => 'scope', 'type' => 'select', 'options' => array( 'global', 'local' ) ),
-				array( 'name' => 'key', 'type' => 'text' ),
-				array( 'name' => 'value', 'type' => 'mixed' ),
+				array(
+					'name'    => 'scope',
+					'label'   => 'Область',
+					'type'    => 'select',
+					'options' => array(
+						array(
+							'value' => 'global',
+							'label' => 'Глобальная',
+						),
+						array(
+							'value' => 'local',
+							'label' => 'Локальная',
+						),
+					),
+				),
+				array(
+					'name'  => 'key',
+					'label' => 'Ключ',
+					'type'  => 'text',
+				),
+				array(
+					'name'  => 'value',
+					'label' => 'Значение',
+					'type'  => 'mixed',
+				),
 			),
 		);
 	}
@@ -24,7 +46,7 @@ class WP_Automation_Set_Variable_Node implements WP_Automation_Node {
 		$key    = isset( $config['key'] ) ? sanitize_key( $config['key'] ) : '';
 
 		if ( '' === $key ) {
-			$executor->log_node( $context, $node, 'Variable key is missing', 'error' );
+			$executor->log_node( $context, $node, 'Не указан ключ переменной.', 'error' );
 			return;
 		}
 
@@ -32,6 +54,6 @@ class WP_Automation_Set_Variable_Node implements WP_Automation_Node {
 		$value = $executor->resolve_value( $config['value'] ?? null, $context );
 
 		$context->set_variable( $key, $value, $scope );
-		$executor->log_node( $context, $node, 'Variable updated', 'success', array( 'key' => $key, 'scope' => $scope ) );
+		$executor->log_node( $context, $node, 'Переменная обновлена.', 'success', array( 'key' => $key, 'scope' => $scope ) );
 	}
 }

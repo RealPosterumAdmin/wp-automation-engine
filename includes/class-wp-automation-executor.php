@@ -17,7 +17,7 @@ class WP_Automation_Executor {
 			array(
 				'workflow_id' => $workflow['id'],
 				'status'      => 'started',
-				'message'     => 'Workflow started',
+				'message'     => 'Сценарий запущен.',
 				'context'     => array( 'trigger' => $trigger_data ),
 			)
 		);
@@ -29,7 +29,7 @@ class WP_Automation_Executor {
 				array(
 					'workflow_id' => $workflow['id'],
 					'status'      => 'success',
-					'message'     => 'Workflow finished',
+					'message'     => 'Сценарий завершен.',
 					'context'     => array( 'variables' => $context->to_array()['variables'] ),
 				)
 			);
@@ -58,7 +58,7 @@ class WP_Automation_Executor {
 						'workflow_id' => $context->get_workflow()['id'],
 						'node_id'     => $node['id'] ?? '',
 						'status'      => 'skipped',
-						'message'     => 'Unknown node type',
+						'message'     => 'Неизвестный тип узла.',
 					)
 				);
 				continue;

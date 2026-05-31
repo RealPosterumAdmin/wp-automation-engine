@@ -15,12 +15,24 @@ class WP_Automation_If_Node implements WP_Automation_Node {
 	public function get_schema() {
 		return array(
 			'type'   => $this->get_type(),
-			'label'  => 'Conditional Branch',
+			'label'  => 'Условная ветка',
 			'icon'   => 'randomize',
 			'fields' => array(
-				array( 'name' => 'condition', 'type' => 'condition' ),
-				array( 'name' => 'on_true', 'type' => 'nodes' ),
-				array( 'name' => 'on_false', 'type' => 'nodes' ),
+				array(
+					'name'  => 'condition',
+					'label' => 'Условие',
+					'type'  => 'condition',
+				),
+				array(
+					'name'  => 'on_true',
+					'label' => 'Ветка "Да"',
+					'type'  => 'nodes',
+				),
+				array(
+					'name'  => 'on_false',
+					'label' => 'Ветка "Нет"',
+					'type'  => 'nodes',
+				),
 			),
 		);
 	}
@@ -31,7 +43,7 @@ class WP_Automation_If_Node implements WP_Automation_Node {
 		$condition_met = $this->condition_evaluator->evaluate( $condition, $context );
 		$branch        = $condition_met ? ( $config['on_true'] ?? array() ) : ( $config['on_false'] ?? array() );
 
-		$executor->log_node( $context, $node, $condition_met ? 'Condition matched' : 'Condition did not match' );
+		$executor->log_node( $context, $node, $condition_met ? 'Условие выполнено.' : 'Условие не выполнено.' );
 		$executor->execute_nodes( is_array( $branch ) ? $branch : array(), $context );
 	}
 }
