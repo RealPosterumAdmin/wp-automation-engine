@@ -245,7 +245,6 @@ node.config = ensureCompositeValue(value, {});
 syncTextarea();
 }, render, {
 allowedTypes: ['object', 'array'],
-hideLabel: true,
 }, depth + 1)));
 card.appendChild(body);
 return card;
@@ -284,7 +283,6 @@ config[field.name] = value;
 syncTextarea();
 }, render, {
 allowedTypes: WPAE_ALL_DATA_TYPES,
-hideLabel: true,
 }, depth));
 break;
 case 'object':
@@ -293,7 +291,6 @@ config[field.name] = ensureCompositeValue(value, {});
 syncTextarea();
 }, render, {
 allowedTypes: ['object', 'array'],
-hideLabel: true,
 }, depth));
 break;
 case 'condition':
@@ -310,7 +307,6 @@ config[field.name] = value;
 syncTextarea();
 }, render, {
 allowedTypes: WPAE_ALL_DATA_TYPES,
-hideLabel: true,
 }, depth));
 break;
 }
@@ -458,7 +454,6 @@ operand.value = value;
 onChange();
 }, render, {
 allowedTypes: WPAE_ALL_DATA_TYPES,
-hideLabel: true,
 }, depth));
 }
 
@@ -591,7 +586,7 @@ wrapper.setAttribute('data-depth', String(depth || 0));
 const allowedTypes = normalizeAllowedDataTypes(options && options.allowedTypes ? options.allowedTypes : WPAE_ALL_DATA_TYPES);
 const currentType = getDataValueType(value, allowedTypes[0] || 'string');
 
-if (!(options && options.hideLabel) && allowedTypes.length > 1) {
+if (!(options && options.hideTypeSelector) && allowedTypes.length > 1) {
 const typeField = document.createElement('div');
 typeField.className = 'wpae-field';
 
@@ -723,7 +718,7 @@ nextObject[key] = nextValue;
 onChange(nextObject);
 }, rerender, {
 allowedTypes: WPAE_ALL_DATA_TYPES,
-hideLabel: true,
+hideTypeSelector: true,
 }, depth + 1));
 entry.appendChild(body);
 
@@ -811,7 +806,7 @@ nextArray[index] = nextValue;
 onChange(nextArray);
 }, rerender, {
 allowedTypes: WPAE_ALL_DATA_TYPES,
-hideLabel: true,
+hideTypeSelector: true,
 }, depth + 1));
 entry.appendChild(body);
 
