@@ -92,6 +92,86 @@ class WP_Automation_Storage {
 		update_option( self::WORKFLOWS_OPTION, $normalized, false );
 	}
 
+	public function create_workflow( array $workflow ) {
+		$workflows = $this->get_workflows();
+
+		if ( empty( $workflow['id'] ) ) {
+			$workflow['id'] = $this->generate_workflow_id();
+		}
+
+		$normalized = $this->normalize_workflow( $workflow );
+
+		if ( null === $normalized ) {
+			return null;
+		}
+
+		$workflows[] = $normalized;
+		update_option( self::WORKFLOWS_OPTION, $workflows, false );
+
+		return $normalized;
+	}
+
+	public function update_workflow( $workflow_id, array $workflow ) {
+		$workflow_id = sanitize_key( $workflow_id );
+
+		if ( '' === $workflow_id ) {
+			return null;
+		}
+
+		$workflow['id'] = $workflow_id;
+		$normalized     = $this->normalize_workflow( $workflow );
+
+		if ( null === $normalized ) {
+			return null;
+		}
+
+		$workflows = $this->get_workflows();
+
+		foreach ( $workflows as $index => $existing_workflow ) {
+			if ( $existing_workflow['id'] !== $workflow_id ) {
+				continue;
+			}
+
+			$workflows[ $index ] = $normalized;
+			update_option( self::WORKFLOWS_OPTION, $workflows, false );
+
+			return $normalized;
+		}
+
+		return null;
+	}
+
+	public function delete_workflow( $workflow_id ) {
+		$workflow_id = sanitize_key( $workflow_id );
+
+		if ( '' === $workflow_id ) {
+			return false;
+		}
+
+		$workflows = $this->get_workflows();
+		$updated   = array_values(
+			array_filter(
+				$workflows,
+				static function ( $workflow ) use ( $workflow_id ) {
+					return isset( $workflow['id'] ) && $workflow['id'] !== $workflow_id;
+				}
+			)
+		);
+
+		if ( count( $updated ) === count( $workflows ) ) {
+			return false;
+		}
+
+		wp_clear_scheduled_hook( 'wp_automation_engine_run_cron_workflow', array( $workflow_id ) );
+		update_option( self::WORKFLOWS_OPTION, $updated, false );
+
+		return true;
+	}
+
+	public function workflow_exists( $workflow_id ) {
+		return null !== $this->get_workflow( $workflow_id );
+	}
+
 	public function get_workflow( $workflow_id ) {
 		foreach ( $this->get_workflows() as $workflow ) {
 			if ( $workflow['id'] === $workflow_id ) {
@@ -164,5 +244,13 @@ class WP_Automation_Storage {
 			'variables' => isset( $workflow['variables'] ) && is_array( $workflow['variables'] ) ? $workflow['variables'] : array(),
 			'nodes'     => isset( $workflow['nodes'] ) && is_array( $workflow['nodes'] ) ? $workflow['nodes'] : array(),
 		);
+	}
+
+	private function generate_workflow_id() {
+		do {
+			$workflow_id = 'workflow_' . strtolower( wp_generate_password( 8, false, false ) );
+		} while ( $this->workflow_exists( $workflow_id ) );
+
+		return $workflow_id;
 	}
 }

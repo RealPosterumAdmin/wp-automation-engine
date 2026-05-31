@@ -1,0 +1,56 @@
+.wpae-admin .wpae-admin-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 16px;
+}
+
+.wpae-admin .wpae-admin-layout {
+	display: flex;
+	gap: 20px;
+	align-items: flex-start;
+}
+
+.wpae-admin .wpae-admin-main {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.wpae-admin .wpae-admin-sidebar {
+	flex: 0 0 320px;
+	max-width: 320px;
+}
+
+.wpae-admin .wpae-admin-sidebar .postbox {
+	margin-bottom: 12px;
+}
+
+.wpae-admin .wpae-admin-sidebar .hndle {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.wpae-admin .wpae-status-enabled {
+	color: #00a32a;
+}
+
+.wpae-admin .wpae-status-disabled {
+	color: #d63638;
+}
+
+.wpae-admin .wpae-trigger-row.is-hidden {
+	display: none;
+}
+
+@media screen and (max-width: 960px) {
+	.wpae-admin .wpae-admin-layout {
+		flex-direction: column;
+	}
+
+	.wpae-admin .wpae-admin-sidebar {
+		flex-basis: auto;
+		max-width: none;
+		width: 100%;
+	}
+}

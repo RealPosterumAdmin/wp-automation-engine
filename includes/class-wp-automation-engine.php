@@ -63,6 +63,7 @@ class WP_Automation_Engine {
 
 		$this->loader->add_action( 'admin_menu', $plugin_admin, 'add_plugin_admin_menu', 10, 0 );
 		$this->loader->add_action( 'admin_init', $plugin_admin, 'handle_form_submission', 10, 0 );
+		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_assets', 10, 1 );
 	}
 
 	public function run() {
