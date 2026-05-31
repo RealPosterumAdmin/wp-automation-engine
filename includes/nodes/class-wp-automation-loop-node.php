@@ -2,6 +2,23 @@
 
 class WP_Automation_Loop_Node implements WP_Automation_Node {
 
+	public function get_type() {
+		return 'loop';
+	}
+
+	public function get_schema() {
+		return array(
+			'type'   => $this->get_type(),
+			'label'  => 'Loop',
+			'icon'   => 'backup',
+			'fields' => array(
+				array( 'name' => 'source', 'type' => 'path' ),
+				array( 'name' => 'item_name', 'type' => 'text' ),
+				array( 'name' => 'nodes', 'type' => 'nodes' ),
+			),
+		);
+	}
+
 	public function execute( array $node, WP_Automation_Context $context, WP_Automation_Executor $executor ) {
 		$config      = isset( $node['config'] ) && is_array( $node['config'] ) ? $node['config'] : array();
 		$source      = isset( $config['source'] ) ? $config['source'] : '';

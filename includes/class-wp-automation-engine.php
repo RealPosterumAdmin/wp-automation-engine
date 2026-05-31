@@ -26,17 +26,17 @@ class WP_Automation_Engine {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-storage.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-context.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-condition-evaluator.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-node-factory.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-executor.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-kernel.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-trigger-agent.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/class-wp-automation-admin.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/interface-wp-automation-node.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-set-variable-node.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-dispatch-event-node.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-action-node.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-if-node.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-loop-node.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-node-factory.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-executor.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-kernel.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-trigger-agent.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/admin/class-wp-automation-admin.php';
 
 		$this->loader = new WP_Automation_Loader();
 	}
