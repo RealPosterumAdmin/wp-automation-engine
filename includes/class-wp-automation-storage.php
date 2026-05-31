@@ -218,6 +218,16 @@ class WP_Automation_Storage {
 		}
 	}
 
+	public function clear_workflow_cron_event( $workflow_id ) {
+		$workflow_id = sanitize_key( $workflow_id );
+
+		if ( '' === $workflow_id ) {
+			return;
+		}
+
+		wp_clear_scheduled_hook( 'wp_automation_engine_run_cron_workflow', array( $workflow_id ) );
+	}
+
 	private function normalize_workflow( $workflow ) {
 		if ( ! is_array( $workflow ) ) {
 			return null;

@@ -125,6 +125,7 @@ class WP_Automation_Admin {
 		$workflow_id = isset( $_POST['wp_automation_engine_existing_workflow_id'] ) ? sanitize_key( wp_unslash( $_POST['wp_automation_engine_existing_workflow_id'] ) ) : '';
 
 		if ( 'edit' === $mode ) {
+			$this->storage->clear_workflow_cron_event( $workflow_id );
 			$saved_workflow = $this->storage->update_workflow( $workflow_id, $workflow );
 			$notice         = 'updated';
 		} else {
