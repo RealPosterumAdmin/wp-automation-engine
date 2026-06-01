@@ -8,8 +8,16 @@ class WP_Automation_Storage {
 	const MAX_LOG_ITEMS    = 50;
 
 	public function bootstrap_defaults() {
-		if ( false === get_option( self::WORKFLOWS_OPTION, false ) ) {
+		$workflows = get_option( self::WORKFLOWS_OPTION, false );
+
+		if ( false === $workflows ) {
 			update_option( self::WORKFLOWS_OPTION, $this->get_default_workflows(), false );
+		} elseif ( is_array( $workflows ) ) {
+			$merged_workflows = $this->merge_missing_default_workflows( $workflows );
+
+			if ( $merged_workflows !== $workflows ) {
+				update_option( self::WORKFLOWS_OPTION, $merged_workflows, false );
+			}
 		}
 
 		if ( false === get_option( self::LOG_OPTION, false ) ) {
@@ -204,6 +212,26 @@ class WP_Automation_Storage {
 				),
 			),
 		);
+	}
+
+	private function merge_missing_default_workflows( array $workflows ) {
+		$existing_ids = array();
+
+		foreach ( $workflows as $workflow ) {
+			if ( is_array( $workflow ) && ! empty( $workflow['id'] ) ) {
+				$existing_ids[] = (string) $workflow['id'];
+			}
+		}
+
+		foreach ( $this->get_default_workflows() as $default_workflow ) {
+			if ( in_array( $default_workflow['id'], $existing_ids, true ) ) {
+				continue;
+			}
+
+			$workflows[] = $default_workflow;
+		}
+
+		return $workflows;
 	}
 
 	public function get_workflows() {
