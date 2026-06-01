@@ -32,11 +32,7 @@ class WP_Automation_Engine {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-context.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-condition-evaluator.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/interface-wp-automation-node.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-set-variable-node.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-dispatch-event-node.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-action-node.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-if-node.php';
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-loop-node.php';
+		$this->require_files_from_directory( plugin_dir_path( dirname( __FILE__ ) ) . 'includes/nodes/class-wp-automation-*.php' );
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-node-factory.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-executor.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-automation-kernel.php';
@@ -69,7 +65,9 @@ class WP_Automation_Engine {
 		$this->storage      = new WP_Automation_Storage();
 		$this->storage->bootstrap_defaults();
 		$condition_engine    = new WP_Automation_Condition_Evaluator();
-		$this->node_factory  = new WP_Automation_Node_Factory( $condition_engine );
+		$payload_storage     = new WPAE_JSON_File_Payload_Storage();
+		$workflow_scheduler  = new WPAE_WordPress_Workflow_Scheduler();
+		$this->node_factory  = new WP_Automation_Node_Factory( $condition_engine, $payload_storage, $workflow_scheduler );
 		$workflow_repository = new WPAE_Storage_Workflow_Repository( $this->storage );
 		$run_repository      = new WPAE_Storage_Run_Repository( $this->storage );
 		$queue               = new WPAE_Sync_Queue();
@@ -77,7 +75,7 @@ class WP_Automation_Engine {
 		$event_bus           = new WPAE_WordPress_Event_Bus();
 		$expression_engine   = new WPAE_Basic_Expression_Evaluator();
 		$trigger_registry    = new WPAE_Trigger_Registry();
-		$executor            = new WP_Automation_Executor( $this->storage, $this->node_factory, $run_repository, $expression_engine, $lock_manager, $event_bus );
+		$executor            = new WP_Automation_Executor( $this->storage, $this->node_factory, $run_repository, $expression_engine, $lock_manager, $event_bus, $payload_storage, $workflow_scheduler );
 		$execute_run         = new WPAE_Execute_Run( $executor );
 		$start_workflow      = new WPAE_Start_Workflow( $workflow_repository, $queue );
 		$dispatch_trigger    = new WPAE_Dispatch_Trigger( $start_workflow );

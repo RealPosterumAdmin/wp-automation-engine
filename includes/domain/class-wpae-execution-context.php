@@ -36,8 +36,16 @@ class WPAE_Execution_Context {
 		return $this->runtime;
 	}
 
+	public function get_trigger_data() {
+		return $this->trigger_data;
+	}
+
 	public function set_runtime_value( $key, $value ) {
 		$this->runtime[ $key ] = $value;
+	}
+
+	public function merge_runtime( array $runtime ) {
+		$this->runtime = array_replace_recursive( $this->runtime, $runtime );
 	}
 
 	public function set_variable( $key, $value, $scope = 'global' ) {
@@ -125,6 +133,12 @@ class WPAE_Execution_Context {
 				break;
 			case 'runtime':
 				$value = $this->runtime;
+				break;
+			case 'payload':
+				$value = $this->runtime['payload'] ?? null;
+				break;
+			case 'batch':
+				$value = $this->runtime['batch'] ?? array();
 				break;
 			case 'items':
 				$value = $this->named_items;
