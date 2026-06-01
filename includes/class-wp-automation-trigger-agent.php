@@ -15,6 +15,7 @@ class WP_Automation_Trigger_Agent {
 	public function bootstrap() {
 		add_filter( 'cron_schedules', array( $this, 'register_cron_schedules' ) );
 		add_action( 'wp_automation_engine_run_cron_workflow', array( $this, 'run_cron_workflow' ), 10, 1 );
+		add_action( 'wp_automation_engine_run_scheduled_workflow', array( $this, 'run_scheduled_workflow' ), 10, 2 );
 
 		foreach ( $this->storage->get_workflows() as $workflow ) {
 			if ( empty( $workflow['enabled'] ) ) {
@@ -61,6 +62,18 @@ class WP_Automation_Trigger_Agent {
 			$workflow_id,
 			array(
 				'type' => 'cron',
+			)
+		);
+	}
+
+	public function run_scheduled_workflow( $workflow_id, $trigger_data = array() ) {
+		$this->kernel->handle_workflow_trigger(
+			$workflow_id,
+			array_merge(
+				array(
+					'type' => 'scheduled',
+				),
+				is_array( $trigger_data ) ? $trigger_data : array()
 			)
 		);
 	}

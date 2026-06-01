@@ -8,14 +8,18 @@ class WP_Automation_Executor {
 	protected $expression_evaluator;
 	protected $lock_manager;
 	protected $event_bus;
+	protected $payload_storage;
+	protected $workflow_scheduler;
 
-	public function __construct( WP_Automation_Storage $storage, WP_Automation_Node_Factory $node_factory, WPAE_Run_Repository_Interface $run_repository = null, WPAE_Expression_Evaluator_Interface $expression_evaluator = null, WPAE_Lock_Manager_Interface $lock_manager = null, WPAE_Event_Bus_Interface $event_bus = null ) {
+	public function __construct( WP_Automation_Storage $storage, WP_Automation_Node_Factory $node_factory, WPAE_Run_Repository_Interface $run_repository = null, WPAE_Expression_Evaluator_Interface $expression_evaluator = null, WPAE_Lock_Manager_Interface $lock_manager = null, WPAE_Event_Bus_Interface $event_bus = null, WPAE_Payload_Storage_Interface $payload_storage = null, WPAE_Workflow_Scheduler_Interface $workflow_scheduler = null ) {
 		$this->storage              = $storage;
 		$this->node_factory         = $node_factory;
 		$this->run_repository       = $run_repository;
 		$this->expression_evaluator = $expression_evaluator;
 		$this->lock_manager         = $lock_manager;
 		$this->event_bus            = $event_bus;
+		$this->payload_storage      = $payload_storage;
+		$this->workflow_scheduler   = $workflow_scheduler;
 	}
 
 	public function execute_workflow( array $workflow, array $trigger_data = array() ) {
@@ -48,6 +52,8 @@ class WP_Automation_Executor {
 			array(
 				'run_id'           => $run->get_id(),
 				'workflow_version' => $version->get_hash(),
+				'payload'          => $this->extract_payload_runtime( $trigger_data ),
+				'batch'            => $this->extract_batch_runtime( $trigger_data ),
 			)
 		);
 
@@ -194,5 +200,77 @@ class WP_Automation_Executor {
 		}
 
 		do_action( 'wp_automation_engine_internal_event_' . $event_name, $payload );
+	}
+
+	public function save_payload( $payload_key, $data, array $metadata = array() ) {
+		if ( ! $this->payload_storage ) {
+			return new WP_Error( 'payload_storage_unavailable', __( 'Хранилище JSON-пакетов недоступно.', 'wp-automation-engine' ) );
+		}
+
+		$metadata['key'] = sanitize_key( $payload_key );
+		$reference       = $this->payload_storage->save( $data, $metadata );
+
+		if ( is_wp_error( $reference ) ) {
+			return $reference;
+		}
+
+		return $reference instanceof WPAE_Payload_Reference ? $reference->to_array() : $reference;
+	}
+
+	public function load_payload_batch( $payload_id, $offset = 0, $limit = 50, $source = '' ) {
+		if ( ! $this->payload_storage ) {
+			return new WP_Error( 'payload_storage_unavailable', __( 'Хранилище JSON-пакетов недоступно.', 'wp-automation-engine' ) );
+		}
+
+		return $this->payload_storage->read_batch( $payload_id, $offset, $limit, $source );
+	}
+
+	public function archive_payload( $payload_id ) {
+		if ( ! $this->payload_storage ) {
+			return new WP_Error( 'payload_storage_unavailable', __( 'Хранилище JSON-пакетов недоступно.', 'wp-automation-engine' ) );
+		}
+
+		return $this->payload_storage->archive( $payload_id );
+	}
+
+	public function delete_payload( $payload_id ) {
+		if ( ! $this->payload_storage ) {
+			return new WP_Error( 'payload_storage_unavailable', __( 'Хранилище JSON-пакетов недоступно.', 'wp-automation-engine' ) );
+		}
+
+		return $this->payload_storage->delete( $payload_id );
+	}
+
+	public function schedule_workflow( $workflow_id, array $trigger_data = array(), $delay_seconds = 0 ) {
+		if ( ! $this->workflow_scheduler ) {
+			return new WP_Error( 'workflow_scheduler_unavailable', __( 'Планировщик сценариев недоступен.', 'wp-automation-engine' ) );
+		}
+
+		$scheduled_at = time() + max( 0, (int) $delay_seconds );
+
+		return $this->workflow_scheduler->schedule_single( $workflow_id, $trigger_data, $scheduled_at );
+	}
+
+	protected function extract_payload_runtime( array $trigger_data ) {
+		if ( isset( $trigger_data['payload'] ) && is_array( $trigger_data['payload'] ) ) {
+			return $trigger_data['payload'];
+		}
+
+		if ( isset( $trigger_data['payload_reference'] ) && is_array( $trigger_data['payload_reference'] ) ) {
+			return $trigger_data['payload_reference'];
+		}
+
+		return array();
+	}
+
+	protected function extract_batch_runtime( array $trigger_data ) {
+		if ( isset( $trigger_data['batch'] ) && is_array( $trigger_data['batch'] ) ) {
+			return $trigger_data['batch'];
+		}
+
+		return array(
+			'offset' => 0,
+			'limit'  => 50,
+		);
 	}
 }
