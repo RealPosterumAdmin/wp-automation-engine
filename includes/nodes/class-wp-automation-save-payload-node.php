@@ -55,6 +55,19 @@ class WP_Automation_Save_Payload_Node implements WP_Automation_Node {
 			return;
 		}
 
+		$context->merge_runtime(
+			array(
+				'payload' => $reference,
+				'batch'   => array(
+					'offset'      => 0,
+					'limit'       => 0,
+					'total'       => $reference['total_items'] ?? 0,
+					'next_offset' => 0,
+					'source'      => $reference['source'] ?? '',
+				),
+			)
+		);
+
 		if ( '' !== $store_in ) {
 			$context->set_variable( $store_in, $reference, 'global' );
 		}

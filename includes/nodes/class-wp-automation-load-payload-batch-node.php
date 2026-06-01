@@ -72,6 +72,19 @@ class WP_Automation_Load_Payload_Batch_Node implements WP_Automation_Node {
 			return;
 		}
 
+		$context->merge_runtime(
+			array(
+				'payload' => $batch['reference'],
+				'batch'   => array(
+					'offset'      => $batch['offset'],
+					'limit'       => $batch['limit'],
+					'total'       => $batch['total'],
+					'next_offset' => $batch['next_offset'],
+					'has_more'    => $batch['has_more'],
+					'source'      => $batch['source'],
+				),
+			)
+		);
 		$context->set_variable( $store_in, $batch['items'], 'global' );
 		$context->set_variable( $meta_in, $batch, 'global' );
 

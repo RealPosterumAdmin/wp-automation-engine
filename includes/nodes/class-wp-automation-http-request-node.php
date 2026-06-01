@@ -148,6 +148,18 @@ class WP_Automation_Http_Request_Node implements WP_Automation_Node {
 				return;
 			}
 
+			$context->merge_runtime(
+				array(
+					'payload' => $reference,
+					'batch'   => array(
+						'offset'      => 0,
+						'limit'       => 0,
+						'total'       => $reference['total_items'] ?? 0,
+						'next_offset' => 0,
+						'source'      => $reference['source'] ?? '',
+					),
+				)
+			);
 			$context->set_variable( $target_key, $reference, 'global' );
 		} else {
 			$context->set_variable( $target_key, $result, 'global' );
