@@ -148,6 +148,14 @@ class WPAE_JSON_File_Payload_Storage implements WPAE_Payload_Storage_Interface {
 	}
 
 	protected function get_base_directory() {
+		if ( defined( 'ODATA_PRODUCTS_DIR' ) && '' !== trim( (string) constant( 'ODATA_PRODUCTS_DIR' ) ) ) {
+			$custom_directory = untrailingslashit( (string) constant( 'ODATA_PRODUCTS_DIR' ) );
+
+			if ( is_dir( $custom_directory ) || wp_mkdir_p( $custom_directory ) ) {
+				return $custom_directory;
+			}
+		}
+
 		$uploads = wp_upload_dir();
 
 		return trailingslashit( $uploads['basedir'] ) . self::DIRECTORY_NAME;

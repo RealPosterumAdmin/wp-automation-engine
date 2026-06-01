@@ -6,11 +6,17 @@ class WP_Automation_Node_Factory {
 	protected $nodes = array();
 	protected $payload_storage;
 	protected $workflow_scheduler;
+	protected $onec_importer;
+	protected $onec_product_synchronizer;
+	protected $woocommerce_exporter;
 
-	public function __construct( WP_Automation_Condition_Evaluator $condition_evaluator, WPAE_Payload_Storage_Interface $payload_storage = null, WPAE_Workflow_Scheduler_Interface $workflow_scheduler = null ) {
+	public function __construct( WP_Automation_Condition_Evaluator $condition_evaluator, WPAE_Payload_Storage_Interface $payload_storage = null, WPAE_Workflow_Scheduler_Interface $workflow_scheduler = null, WPAE_Import_OneC_Products $onec_importer = null, WPAE_Sync_OneC_Product $onec_product_synchronizer = null, WPAE_Export_WooCommerce_Products $woocommerce_exporter = null ) {
 		$this->condition_evaluator = $condition_evaluator;
 		$this->payload_storage     = $payload_storage;
 		$this->workflow_scheduler  = $workflow_scheduler;
+		$this->onec_importer       = $onec_importer;
+		$this->onec_product_synchronizer = $onec_product_synchronizer;
+		$this->woocommerce_exporter      = $woocommerce_exporter;
 		$this->register_builtin_nodes();
 	}
 
@@ -62,5 +68,17 @@ class WP_Automation_Node_Factory {
 		$this->register( new WP_Automation_Update_User_Node() );
 		$this->register( new WP_Automation_Woo_Create_Product_Node() );
 		$this->register( new WP_Automation_Woo_Update_Product_Node() );
+
+		if ( $this->onec_importer ) {
+			$this->register( new WP_Automation_Import_OneC_Products_Node( $this->onec_importer ) );
+		}
+
+		if ( $this->onec_product_synchronizer ) {
+			$this->register( new WP_Automation_Sync_OneC_Product_Node( $this->onec_product_synchronizer ) );
+		}
+
+		if ( $this->woocommerce_exporter ) {
+			$this->register( new WP_Automation_Export_WooCommerce_Products_Node( $this->woocommerce_exporter ) );
+		}
 	}
 }

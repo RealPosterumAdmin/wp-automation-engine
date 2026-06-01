@@ -9,57 +9,7 @@ class WP_Automation_Storage {
 
 	public function bootstrap_defaults() {
 		if ( false === get_option( self::WORKFLOWS_OPTION, false ) ) {
-			update_option(
-				self::WORKFLOWS_OPTION,
-				array(
-					array(
-						'id'        => WP_Automation_Engine::DEFAULT_WORKFLOW_ID,
-						'name'      => 'Пример сценария',
-						'enabled'   => false,
-						'trigger'   => array(
-							'type' => 'action',
-							'hook' => 'init',
-						),
-						'variables' => array(
-							'message' => 'Привет из WP Automation Engine',
-						),
-						'nodes'     => array(
-							array(
-								'id'     => 'node_set_message',
-								'type'   => 'set_variable',
-								'config' => array(
-									'scope' => 'global',
-									'key'   => 'message',
-									'value' => 'Сценарий выполнен на хуке {{trigger.hook}}',
-								),
-							),
-							array(
-								'id'     => 'node_dispatch_event',
-								'type'   => 'dispatch_event',
-								'config' => array(
-									'event'   => 'workflow.finished',
-									'payload' => array(
-										'workflow_id' => '{{workflow.id}}',
-										'message'     => '{{variables.message}}',
-									),
-								),
-							),
-							array(
-								'id'     => 'node_fire_action',
-								'type'   => 'action',
-								'config' => array(
-									'hook'    => 'wp_automation_engine_workflow_finished',
-									'payload' => array(
-										'workflow_id' => '{{workflow.id}}',
-										'message'     => '{{variables.message}}',
-									),
-								),
-							),
-						),
-					),
-				),
-				false
-			);
+			update_option( self::WORKFLOWS_OPTION, $this->get_default_workflows(), false );
 		}
 
 		if ( false === get_option( self::LOG_OPTION, false ) ) {
@@ -69,6 +19,191 @@ class WP_Automation_Storage {
 		if ( false === get_option( self::RUNS_OPTION, false ) ) {
 			add_option( self::RUNS_OPTION, array(), '', false );
 		}
+	}
+
+	private function get_default_workflows() {
+		return array(
+			array(
+				'id'        => WP_Automation_Engine::DEFAULT_WORKFLOW_ID,
+				'name'      => 'Пример сценария',
+				'enabled'   => false,
+				'trigger'   => array(
+					'type' => 'action',
+					'hook' => 'init',
+				),
+				'variables' => array(
+					'message' => 'Привет из WP Automation Engine',
+				),
+				'nodes'     => array(
+					array(
+						'id'     => 'node_set_message',
+						'type'   => 'set_variable',
+						'config' => array(
+							'scope' => 'global',
+							'key'   => 'message',
+							'value' => 'Сценарий выполнен на хуке {{trigger.hook}}',
+						),
+					),
+					array(
+						'id'     => 'node_dispatch_event',
+						'type'   => 'dispatch_event',
+						'config' => array(
+							'event'   => 'workflow.finished',
+							'payload' => array(
+								'workflow_id' => '{{workflow.id}}',
+								'message'     => '{{variables.message}}',
+							),
+						),
+					),
+					array(
+						'id'     => 'node_fire_action',
+						'type'   => 'action',
+						'config' => array(
+							'hook'    => 'wp_automation_engine_workflow_finished',
+							'payload' => array(
+								'workflow_id' => '{{workflow.id}}',
+								'message'     => '{{variables.message}}',
+							),
+						),
+					),
+				),
+			),
+			array(
+				'id'        => 'onec_import_products',
+				'name'      => '1С → WooCommerce: импорт каталога',
+				'enabled'   => false,
+				'trigger'   => array(
+					'type' => 'manual',
+				),
+				'variables' => array(
+					'batch_size' => 1000,
+				),
+				'nodes'     => array(
+					array(
+						'id'     => 'import_catalog',
+						'type'   => 'import_onec_products',
+						'config' => array(
+							'payload_key'       => 'onec_products',
+							'create_categories' => 'yes',
+							'verify_ssl'        => 'yes',
+							'timeout'           => 60,
+							'store_in'          => 'onec_payload',
+						),
+					),
+					array(
+						'id'     => 'schedule_batch_processing',
+						'type'   => 'schedule_workflow',
+						'config' => array(
+							'mode'           => 'cron',
+							'workflow_id'    => 'onec_process_products_batch',
+							'delay_seconds'  => 0,
+							'payload_id'     => '{{payload.id}}',
+							'payload_source' => '{{payload.source}}',
+							'offset'         => 0,
+							'limit'          => '{{variables.batch_size}}',
+						),
+					),
+				),
+			),
+			array(
+				'id'        => 'onec_process_products_batch',
+				'name'      => '1С → WooCommerce: обработка батча товаров',
+				'enabled'   => true,
+				'trigger'   => array(
+					'type' => 'manual',
+				),
+				'variables' => array(
+					'batch_size' => 1000,
+				),
+				'nodes'     => array(
+					array(
+						'id'     => 'load_batch',
+						'type'   => 'load_payload_batch',
+						'config' => array(
+							'payload_id'  => '{{payload.id}}',
+							'offset'      => '{{batch.offset}}',
+							'limit'       => '{{batch.limit}}',
+							'store_in'    => 'payload_items',
+							'meta_in'     => 'payload_batch',
+							'on_complete' => 'delete',
+						),
+					),
+					array(
+						'id'     => 'loop_products',
+						'type'   => 'loop',
+						'config' => array(
+							'source'    => 'variables.payload_items',
+							'item_name' => 'item',
+							'nodes'     => array(
+								array(
+									'id'     => 'sync_product',
+									'type'   => 'sync_onec_product',
+									'config' => array(
+										'source'                  => 'current_item',
+										'update_name_on_existing' => 'no',
+										'sync_category_on_update' => 'no',
+										'store_in'                => 'synced_product_id',
+									),
+								),
+							),
+						),
+					),
+					array(
+						'id'     => 'continue_if_needed',
+						'type'   => 'if',
+						'config' => array(
+							'condition' => array(
+								'left'       => array(
+									'type'  => 'path',
+									'value' => 'batch.has_more',
+								),
+								'comparison' => '==',
+								'right'      => array(
+									'type'  => 'value',
+									'value' => true,
+								),
+							),
+							'on_true'   => array(
+								array(
+									'id'     => 'schedule_next_batch',
+									'type'   => 'schedule_workflow',
+									'config' => array(
+										'mode'           => 'cron',
+										'workflow_id'    => 'onec_process_products_batch',
+										'delay_seconds'  => 60,
+										'payload_id'     => '{{payload.id}}',
+										'payload_source' => '{{payload.source}}',
+										'offset'         => '{{batch.next_offset}}',
+										'limit'          => '{{batch.limit}}',
+									),
+								),
+							),
+							'on_false'  => array(),
+						),
+					),
+				),
+			),
+			array(
+				'id'        => 'woocommerce_export_products',
+				'name'      => 'WooCommerce: экспорт товаров в JSON',
+				'enabled'   => false,
+				'trigger'   => array(
+					'type' => 'manual',
+				),
+				'variables' => array(),
+				'nodes'     => array(
+					array(
+						'id'     => 'export_products',
+						'type'   => 'export_woocommerce_products',
+						'config' => array(
+							'target'     => 'payload',
+							'target_key' => 'woo_products_export',
+							'store_in'   => 'woo_products_export',
+						),
+					),
+				),
+			),
+		);
 	}
 
 	public function get_workflows() {

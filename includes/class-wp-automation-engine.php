@@ -67,7 +67,14 @@ class WP_Automation_Engine {
 		$condition_engine    = new WP_Automation_Condition_Evaluator();
 		$payload_storage     = new WPAE_JSON_File_Payload_Storage();
 		$workflow_scheduler  = new WPAE_WordPress_Workflow_Scheduler();
-		$this->node_factory  = new WP_Automation_Node_Factory( $condition_engine, $payload_storage, $workflow_scheduler );
+		$onec_client         = new WPAE_OneC_OData_Client();
+		$category_sync       = new WPAE_WooCommerce_Category_Synchronizer();
+		$product_sync        = new WPAE_WooCommerce_Product_Synchronizer();
+		$product_exporter    = new WPAE_WooCommerce_Product_Exporter();
+		$onec_importer       = new WPAE_Import_OneC_Products( $onec_client, $category_sync, $payload_storage );
+		$onec_product_sync   = new WPAE_Sync_OneC_Product( $product_sync );
+		$woocommerce_export  = new WPAE_Export_WooCommerce_Products( $product_exporter );
+		$this->node_factory  = new WP_Automation_Node_Factory( $condition_engine, $payload_storage, $workflow_scheduler, $onec_importer, $onec_product_sync, $woocommerce_export );
 		$workflow_repository = new WPAE_Storage_Workflow_Repository( $this->storage );
 		$run_repository      = new WPAE_Storage_Run_Repository( $this->storage );
 		$queue               = new WPAE_Sync_Queue();
